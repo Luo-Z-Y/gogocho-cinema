@@ -24,6 +24,8 @@ npm start
 
 Press **Start talking** and allow microphone access. Try: “Something light, under two hours, tomorrow, finishing before ten.” Choose a screening and ticket quantity, then press **Confirm demo booking** on the review card. Voice prepares the review; confirmation is an explicit on-screen action in this version. Typing is also available during an active voice session.
 
+If your speech is not detected, open **Microphone**, choose your intended input and press **Test mic** while speaking. The bars now represent actual input volume. Silence, muted input and stalled capture are reported separately. Bluetooth devices resume the audio contexts again after permission and input-route changes.
+
 ## What is implemented
 
 - Eight original fictional films with descriptions, conversation notes, audience guidance and typographic posters.
@@ -31,6 +33,7 @@ Press **Start talking** and allow microphone access. Try: “Something light, un
 - Mood, date, runtime and finish-time filters; finish times calculated in code. “Before” is strict, and past screenings are excluded.
 - One to six simulated tickets at S$12 each, expiring review cards and stable demo references on retries.
 - An AssemblyAI Voice Agent API client: temporary tokens, microphone PCM resampling, streamed playback, transcripts, interruption handling and two validated tools.
+- A microphone selector, real input waveform and six-second **Test mic** check. The local test sends no audio to AssemblyAI and releases the microphone afterwards; an active conversation can switch input without opening another provider session.
 - A minimal interface with concise labels and one title per poster. Film descriptions, language and audience guidance open under **Details**.
 - Responsive layouts, native labelled controls, reduced-motion support and keyboard-operable film details and booking dialogue.
 
@@ -66,7 +69,7 @@ npm test
 npm run check
 ```
 
-Automated tests cover scheduling, constraints, review validation, cookie isolation, token handling and audio resampling. Chrome browser checks cover responsive layouts, filtering, demo confirmation, and a simulated voice session with a real browser AudioWorklet. **Live AssemblyAI token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. A spoken browser conversation and microphone quality still need testing.** See [progress](docs/PROGRESS.md) and the [demo checklist](docs/DEMO.md).
+Automated tests cover scheduling, constraints, review validation, cookie isolation, token handling and audio resampling. Chrome browser checks cover responsive layouts, filtering, demo confirmation, and a simulated voice session with a real browser AudioWorklet. **Live AssemblyAI token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. A generated spoken phrase was transcribed through the live browser pipeline, and the user confirmed their AirPods conversation works after microphone selection and capture recovery improvements. A full spoken booking journey remains to be checked.** See [progress](docs/PROGRESS.md) and the [demo checklist](docs/DEMO.md).
 
 ## Data and assets
 

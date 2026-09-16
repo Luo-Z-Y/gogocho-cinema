@@ -1,6 +1,6 @@
 # Demo and verification checklist
 
-Use a future date when rehearsing so the film has not already started. All times are Singapore time. Live token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. The spoken journey below still needs a browser microphone test.
+Use a future date when rehearsing so the film has not already started. All times are Singapore time. Live token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. A generated phrase has since passed live browser transcription, and the user confirmed an AirPods conversation works. The complete booking journey below still needs a spoken run.
 
 ## Core journey
 
@@ -19,6 +19,8 @@ Use a future date when rehearsing so the film has not already started. All times
 - Leave a review open for ten minutes: confirmation must reject it and ask for a fresh selection.
 - Ask for a real film, cast member or award: the agent should explain that its programme is fictional.
 - Interrupt mid-sentence: queued audio should stop, and the next reply should address the correction.
+- Open Microphone and run Test mic: silence should report no sound; speaking should move the bars and report input. The six-second test must release the microphone without opening a provider session.
+- Switch microphone during a conversation: capture should move to the selected device without starting another provider session.
 - Deny microphone access, remove the key, or disconnect: show an understandable state and release audio resources.
 - End a conversation: send `session.end` and verify the browser microphone indicator turns off.
 - Try a narrow viewport and keyboard-only navigation, including closing the dialogue with Escape.

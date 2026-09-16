@@ -1,7 +1,7 @@
 // AssemblyAI owns the voice session; only single-use tokens reach this client.
 export class VoiceBoxOffice {
-  constructor({ post, runTool, transcript, state }) {
-    Object.assign(this, { post, runTool, transcript, state });
+  constructor({ post, runTool, transcript, state, input = () => {}, devices = () => {} }) {
+    Object.assign(this, { post, runTool, transcript, state, input, devices });
     this.active = false;
     this.generation = 0;
     this.sources = new Set();
@@ -9,9 +9,14 @@ export class VoiceBoxOffice {
     this.agentText = new Map();
   }
 
-  async start() {
-    if (this.active || this.starting) return;
+  async start(deviceId = '', testOnly = false) {
+    if (this.active || this.starting || this.testing) return;
     this.starting = true;
+    this.testing = testOnly;
+    this.lastFrameAt = this.lastSoundAt = 0;
+    this.peakLevel = 0;
+    this.lastMeterAt = 0;
+    this.state(false, testOnly ? 'Say a few words to test your mic…' : 'Connecting…');
     const generation = ++this.generation;
     const current = () => generation === this.generation;
     this.connectTimer = setTimeout(() => this.stop('Connection timed out. Please try again.'), 30000);
@@ -22,14 +27,23 @@ export class VoiceBoxOffice {
       this.playback = new AudioContext();
       await Promise.all([this.capture.resume(), this.playback.resume()]);
       if (!current()) return;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, channelCount: 1 } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: this.constraints(deviceId) });
       if (!current()) { stream.getTracks().forEach(track => track.stop()); return; }
       this.stream = stream;
+      this.track = stream.getAudioTracks()[0];
+      this.bindTrack();
+      // Bluetooth can change the hardware audio route when microphone access starts.
+      await Promise.all([this.capture.resume(), this.playback.resume()]);
+      if (!current()) return;
+      await this.listInputs();
+      if (!current()) return;
       await this.capture.audioWorklet.addModule('/pcm-worklet.js');
       if (!current()) return;
       this.mic = this.capture.createMediaStreamSource(stream);
       this.worklet = new AudioWorkletNode(this.capture, 'gogocho-pcm', { processorOptions: { inputSampleRate: this.capture.sampleRate } });
       this.worklet.port.onmessage = ({ data }) => {
+        if (!current()) return;
+        this.inspectInput(data);
         if (this.active && current()) {
           if (this.ws.bufferedAmount > 192000) { this.stop('The connection is too slow for live audio. Please try again.'); return; }
           this.send({ type: 'input.audio', audio: btoa(String.fromCharCode(...new Uint8Array(data))) });
@@ -37,6 +51,17 @@ export class VoiceBoxOffice {
       };
       // The worklet produces silent output, so the mic is never monitored locally.
       this.mic.connect(this.worklet).connect(this.capture.destination);
+      this.captureStartedAt = Date.now();
+      this.micTimer = setInterval(() => this.checkInput(), 1000);
+      if (testOnly) {
+        clearTimeout(this.connectTimer);
+        this.starting = false;
+        this.testTimer = setTimeout(() => {
+          const detected = this.peakLevel >= 0.002;
+          this.stop(detected ? 'Microphone detected. Ready to talk.' : 'No sound detected. Check your input.');
+        }, 6000);
+        return;
+      }
       const { token, config } = await this.post('/api/voice-session', {});
       if (!current()) return;
       const url = new URL('wss://agents.assemblyai.com/v1/ws');
@@ -55,6 +80,76 @@ export class VoiceBoxOffice {
     }
   }
 
+  constraints(deviceId) {
+    return { echoCancellation: true, noiseSuppression: false, channelCount: 1, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) };
+  }
+
+  async listInputs() {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+      this.devices(inputs.map(d => ({ id: d.deviceId, label: d.label || 'Microphone' })), this.track?.getSettings().deviceId);
+    } catch { /* Device discovery must not prevent a permitted mic from working. */ }
+  }
+
+  bindTrack() {
+    this.track.onended = () => this.stop('Microphone disconnected. Choose an input and restart.');
+    this.track.onmute = () => this.input(0, 'Microphone muted. Check your input.', true);
+  }
+
+  async changeInput(deviceId) {
+    if (!this.active) return;
+    const generation = this.generation;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: this.constraints(deviceId) });
+      if (generation !== this.generation) { stream.getTracks().forEach(t => t.stop()); return; }
+      const mic = this.capture.createMediaStreamSource(stream);
+      mic.connect(this.worklet);
+      this.mic.disconnect();
+      this.stream.getTracks().forEach(t => { t.onended = null; t.onmute = null; t.stop(); });
+      this.stream = stream; this.mic = mic; this.track = stream.getAudioTracks()[0];
+      this.bindTrack();
+      this.lastFrameAt = this.lastSoundAt = 0; this.peakLevel = 0;
+      this.captureStartedAt = Date.now();
+      await this.capture.resume();
+      await this.listInputs();
+    } catch {
+      if (stream && stream !== this.stream) stream.getTracks().forEach(t => t.stop());
+      this.input(0, 'Could not switch microphone. Check the selected input.', true);
+      await this.listInputs();
+    }
+  }
+
+  inspectInput(buffer) {
+    const samples = new DataView(buffer);
+    let energy = 0;
+    for (let i = 0; i < samples.byteLength; i += 2) energy += (samples.getInt16(i, true) / 32768) ** 2;
+    const rms = Math.sqrt(energy / Math.max(1, samples.byteLength / 2));
+    const now = Date.now();
+    this.lastFrameAt = now;
+    this.peakLevel = Math.max(this.peakLevel || 0, rms);
+    if (rms >= 0.002) this.lastSoundAt = now;
+    if (!this.lastMeterAt || now - this.lastMeterAt >= 100) {
+      this.lastMeterAt = now;
+      const heard = now - (this.lastSoundAt || 0) < 1500;
+      const warning = this.inputWarning(now);
+      this.input(Math.min(1, rms * 12), warning || (heard ? 'Input detected' : 'Speak to check your mic'), Boolean(warning));
+    }
+  }
+
+  checkInput() {
+    const warning = this.inputWarning(Date.now());
+    if (warning) this.input(0, warning, true);
+  }
+
+  inputWarning(now) {
+    if (this.track?.muted) return 'Microphone muted. Check your input.';
+    if (now - (this.lastFrameAt || this.captureStartedAt) > 4000) return 'Microphone paused. Restart or choose another input.';
+    if (now - (this.lastSoundAt || this.captureStartedAt) > 8000) return 'No sound detected. Check your input.';
+    return '';
+  }
+
   send(message) {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(message));
   }
@@ -64,7 +159,7 @@ export class VoiceBoxOffice {
       clearTimeout(this.connectTimer);
       this.starting = false;
       this.active = true;
-      this.state(true, 'Listening. You can interrupt or type below.');
+      this.state(true, 'Connected. Speak when ready.');
       this.sessionTimer = setTimeout(() => this.stop('Your ten-minute demo session has ended.'), 600000);
     } else if (message.type === 'reply.started') {
       this.replyActive = true;
@@ -153,17 +248,22 @@ export class VoiceBoxOffice {
     ++this.generation;
     this.active = false;
     this.starting = false;
+    this.testing = false;
     clearTimeout(this.connectTimer);
     clearTimeout(this.sessionTimer);
+    clearTimeout(this.testTimer);
+    clearInterval(this.micTimer);
     this.send({ type: 'session.end' });
     if (this.ws) { this.ws.onclose = null; this.ws.onerror = null; this.ws.onmessage = null; this.ws.close(); this.ws = null; }
-    this.stream?.getTracks().forEach(track => track.stop());
+    this.stream?.getTracks().forEach(track => { track.onended = null; track.onmute = null; track.stop(); });
     this.mic?.disconnect();
     if (this.worklet) { this.worklet.port.onmessage = null; this.worklet.disconnect(); }
     this.clearPlayback();
     this.capture?.close().catch(() => {});
     this.playback?.close().catch(() => {});
     this.capture = this.playback = this.stream = this.mic = this.worklet = null;
+    this.track = null;
+    this.input(0, message.startsWith('No sound') ? message : '', message.startsWith('No sound'));
     this.replyActive = false;
     this.pendingMessages = [];
     this.agentText.clear();

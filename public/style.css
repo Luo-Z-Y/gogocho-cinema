@@ -66,8 +66,11 @@ input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; bord
 .voice-art span:nth-child(2n) { height: 28px; }
 .voice-art span:nth-child(3n) { height: 46px; }
 .voice-art span:nth-child(4n) { height: 36px; }
-.live .voice-art span { animation: pulse .85s ease-in-out infinite alternate; }
-.live .voice-art span:nth-child(2n) { animation-delay: .3s; }
+.voice-art span { transform: scaleY(calc(.18 + var(--mic-level, 0) * .82)); transition: transform .1s; }
+.mic-controls { margin-top: 14px; font-size: 12px; color: var(--muted); }
+.mic-controls summary { cursor: pointer; width: fit-content; padding: 6px 0; }
+.mic-controls select { margin-top: 8px; }
+#mic-status { font-size: 12px; }
 .primary { display: flex; align-items: center; justify-content: space-between; gap: 15px; width: 100%; min-height: 48px; padding: 14px 16px; background: var(--lime); color: #202719; border: 0; border-radius: 3px; font-size: 14px; }
 .primary:hover { background: #f0f795; }
 .voice-status { margin-top: 16px; color: var(--muted); font-size: 12px; }
@@ -97,7 +100,6 @@ dialog h3 { font-size: 20px; margin-bottom: 16px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .skip { position: absolute; top: -80px; background: var(--lime); color: #111; padding: 12px; z-index: 100; }
 .skip:focus { top: 10px; }
-@keyframes pulse { to { transform: scaleY(.5); } }
 @media (max-width: 1100px) {
   .cinema-layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 30px; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -116,7 +118,7 @@ dialog h3 { font-size: 20px; margin-bottom: 16px; }
   .box-office h2 { font-size: 25px; }
   .voice-art { height: 55px; }
   .box-office .primary { grid-column: 1 / -1; margin-top: 10px; }
-  .voice-status, .privacy, .transcript, .chat { grid-column: 1 / -1; }
+  .voice-status, .privacy, .transcript, .chat, .mic-controls { grid-column: 1 / -1; }
   .voice-status { margin-top: 14px; }
   .privacy { margin-top: 4px; }
   #programme { width: 100%; }

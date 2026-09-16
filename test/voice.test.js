@@ -46,3 +46,30 @@ test('ending a session releases the mic and discards late tool results', async (
   assert.equal(voice.active, false);
   assert.deepEqual(sent.map(m => m.type), ['session.end']);
 });
+
+test('silent microphone frames produce a warning; actual input clears it', () => {
+  const { voice } = fixture();
+  const readings = [];
+  voice.input = (level, message, warning) => readings.push({ level, message, warning });
+  voice.captureStartedAt = Date.now() - 9000;
+  voice.inspectInput(new ArrayBuffer(960));
+  assert.equal(readings.at(-1).level, 0);
+  assert.match(readings.at(-1).message, /No sound/);
+  assert.ok(readings.at(-1).warning);
+  const spoken = new Int16Array(480).fill(2000);
+  voice.lastMeterAt = 0;
+  voice.inspectInput(spoken.buffer);
+  assert.ok(readings.at(-1).level > 0);
+  assert.equal(readings.at(-1).message, 'Input detected');
+  assert.equal(readings.at(-1).warning, false);
+});
+
+test('missing audio frames and a muted device are distinguished from silence', () => {
+  const { voice } = fixture();
+  voice.captureStartedAt = Date.now() - 5000;
+  assert.match(voice.inputWarning(Date.now()), /paused/);
+  voice.track = { muted: true };
+  assert.match(voice.inputWarning(Date.now()), /muted/);
+  assert.deepEqual(voice.constraints('chosen-input').deviceId, { exact: 'chosen-input' });
+  assert.equal(voice.constraints('').deviceId, undefined);
+});

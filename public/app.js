@@ -88,17 +88,31 @@ async function init() {
     voice = new VoiceBoxOffice({ post, runTool, transcript, state: (active, message) => {
       $('.box-office').classList.toggle('live', active);
       $('#voice-start').textContent = active ? 'End conversation' : 'Start talking ↗';
-      $('#voice-start').disabled = false;
+      $('#voice-start').disabled = Boolean(voice?.starting || voice?.testing);
+      $('#mic-test').disabled = Boolean(active || voice?.starting || voice?.testing);
+      $('#mic-input').disabled = Boolean(voice?.starting || voice?.testing);
       $('#voice-status').textContent = message;
       $('#chat').hidden = !active;
+    }, input: (level, message, warning) => {
+      $('.voice-art').style.setProperty('--mic-level', String(level));
+      if ($('#mic-status').textContent !== message) $('#mic-status').textContent = message;
+      if (warning) $('#mic-controls').open = true;
+    }, devices: (inputs, selected) => {
+      const current = selected || $('#mic-input').value;
+      $('#mic-input').replaceChildren(new Option('System default', ''), ...inputs.map(d => new Option(d.label, d.id)));
+      $('#mic-input').value = [...$('#mic-input').options].some(o => o.value === current) ? current : '';
     }});
+    await voice.listInputs();
+    $('#mic-input').onchange = () => voice.changeInput($('#mic-input').value);
+    $('#mic-test').onclick = () => voice.start($('#mic-input').value, true);
     $('#voice-status').textContent = data.voiceConfigured ? 'Ready when you are.' : 'Voice setup pending';
     $('#voice-start').onclick = async () => {
       if (voice.active) { voice.stop(); return; }
       if (!data.voiceConfigured) { notice('Add ASSEMBLYAI_API_KEY to the project’s local .env file and restart the server to enable voice.'); return; }
       $('#voice-start').disabled = true; $('#voice-status').textContent = 'Connecting…'; $('#transcript').replaceChildren();
-      await voice.start();
+      await voice.start($('#mic-input').value);
     };
+    $('#voice-start').disabled = false; $('#mic-test').disabled = false; $('#mic-input').disabled = false;
     $('#chat').onsubmit = e => { e.preventDefault(); const text = $('#message').value.trim(); if (text) { voice.text(text); $('#message').value = ''; } };
   } catch(e) { $('#films').innerHTML = '<div class="empty"><h3>The programme is unavailable.</h3><p>Refresh the page to try again.</p></div>'; $('#voice-status').textContent = 'Box office unavailable.'; notice(e.message); }
 }

@@ -28,9 +28,10 @@
       <aside class="box-office" aria-labelledby="box-heading">
         <h2 id="box-heading">Box office</h2>
         <div class="voice-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-        <button type="button" id="voice-start" class="primary">Start talking <span aria-hidden="true">↗</span></button>
+        <button type="button" id="voice-start" class="primary" disabled>Start talking <span aria-hidden="true">↗</span></button>
         <p id="voice-status" class="voice-status" role="status">Checking availability…</p>
         <p class="privacy">Voice audio is sent to AssemblyAI.</p>
+        <details class="mic-controls" id="mic-controls"><summary>Microphone</summary><label for="mic-input" class="sr-only">Microphone input</label><select id="mic-input" disabled><option value="">System default</option></select><button type="button" id="mic-test" class="text-button" disabled>Test mic</button><p id="mic-status" role="status"></p></details>
         <div id="transcript" class="transcript" role="log" aria-label="Voice conversation" aria-live="polite"></div>
         <form id="chat" class="chat" hidden><label for="message" class="sr-only">Send a message during your voice session</label><input id="message" placeholder="Or type a message…" maxlength="500" autocomplete="off"><button aria-label="Send message">↗</button></form>
       </aside>

@@ -43,3 +43,14 @@ A short live check succeeded: temporary token issued, WebSocket session ready, i
 Next: refresh the local cinema, press Start talking, allow microphone access and complete the spoken demo checklist. The local server remains running.
 
 Version control decision: commit the verified setup record and updated documentation only. Keep `.env` private and untracked. No push because no remote is configured.
+
+
+## 16 September 2026 — Microphone recovery and diagnostics
+
+The user could hear the greeting but their speech was not recognised. macOS was using the AirPods input, which the user confirmed was intended. The original client did not measure incoming sound and showed a decorative waveform even during silence. The initial device-level cause could not be isolated retrospectively.
+
+Added explicit input selection (including switching during a session), an input-driven waveform, separate silence/mute/stall feedback and a six-second local microphone test. The test does not request a provider token or transmit audio, and closes capture automatically. Audio contexts resume again after microphone permission and Bluetooth route changes. Controls remain disabled until initialisation finishes.
+
+Verification: 17 automated tests and syntax/catalogue checks passed. Browser tests distinguished silent and audible local input, requested no tokens, released microphone tracks and had no mobile overflow. A generated spoken phrase traversed the real browser worklet and AssemblyAI service and returned a user transcript. The user then confirmed their AirPods microphone and live conversation work. Full spoken booking completion remains to be tested.
+
+Updated README, demonstration checklist and Obsidian project notes. Commit the verified changes locally; no push because no remote is configured. Credentials remain excluded from Git.
