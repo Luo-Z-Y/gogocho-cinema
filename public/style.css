@@ -35,9 +35,20 @@ h1 em { font-family: Georgia, serif; color: var(--lime); }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
 .section-heading h2 { font-size: 20px; font-weight: 400; }
 .muted { color: var(--muted); font-size: 12px; }
-.filters { display: grid; grid-template-columns: 1.25fr 1fr 1.1fr 1fr auto; gap: 10px; align-items: end; }
+.filters { display: grid; grid-template-columns: 1.25fr 1fr 1.1fr minmax(140px, 1fr) auto; gap: 10px; align-items: end; }
 .filters label, .finish-filter { display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
 input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--paper); font-size: 13px; }
+.finish-control { display: flex; align-items: center; height: 42px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--paper); }
+.finish-control:focus-within { outline: 2px solid var(--lime); outline-offset: 5px; }
+.finish-control button { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 10px; border: 0; background: transparent; font-size: 13px; }
+.finish-control button:focus-visible, .finish-control input:focus-visible { outline: none; }
+#finish-any { width: 100%; gap: 8px; }
+#finish-any svg { flex-shrink: 0; color: var(--muted); }
+#finish-any:hover { color: var(--lime); }
+.finish-control input { flex: 1; width: 0; height: 40px; min-height: 0; padding: 0 0 0 8px; border: 0; background: transparent; font-variant-numeric: tabular-nums; }
+.finish-control input::-webkit-calendar-picker-indicator { display: none; }
+#finish-clear { flex: 0 0 32px; justify-content: center; padding: 0; color: var(--muted); }
+#finish-clear:hover, #finish-clear:focus-visible { color: var(--paper); background: #ffffff0a; }
 .filter-button { min-height: 42px; padding: 10px 14px; background: var(--paper); color: var(--bg); border: 1px solid var(--paper); border-radius: 3px; font-size: 13px; }
 .filter-button:hover { background: var(--lime); border-color: var(--lime); }
 .programme-note { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; color: var(--muted); font-size: 12px; }

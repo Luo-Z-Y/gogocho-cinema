@@ -19,7 +19,9 @@ function filters() {
 }
 function syncFinishTime(specific = Boolean(form.elements.endBefore.value)) {
   const input = form.elements.endBefore;
-  $('#finish-mode').value = specific ? 'before' : '';
+  $('#finish-any').hidden = specific;
+  $('#finish-clear').hidden = !specific;
+  $('#finish-label').htmlFor = specific ? 'finish-time' : 'finish-any';
   input.hidden = input.disabled = !specific;
   input.required = specific;
   if (!specific) input.value = '';
@@ -55,7 +57,8 @@ async function prepare(screeningId, quantity) {
 }
 $('#films').addEventListener('click', e => { const button = e.target.closest('[data-screening]'); if (button) prepare(button.dataset.screening, 2); });
 form.addEventListener('submit', e => { e.preventDefault(); search(); });
-$('#finish-mode').onchange = () => { syncFinishTime($('#finish-mode').value === 'before'); if (!form.elements.endBefore.hidden) form.elements.endBefore.focus(); };
+$('#finish-any').onclick = () => { syncFinishTime(true); form.elements.endBefore.focus(); };
+$('#finish-clear').onclick = () => { syncFinishTime(false); $('#finish-any').focus(); };
 $('#reset').onclick = () => { form.reset(); syncFinishTime(); form.elements.date.value = data.today; search(); };
 $('#close-booking').onclick = () => booking.close();
 $('#quantity').onchange = () => { if (quote) prepare(quote.screening.id, Number($('#quantity').value)); };

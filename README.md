@@ -30,7 +30,7 @@ If your speech is not detected, open **Microphone**, choose your intended input 
 
 - Eight original fictional films with descriptions, conversation notes, audience guidance and typographic posters.
 - A rolling seven-day programme across two screens, using Asia/Singapore time.
-- Mood, date, runtime and finish-time filters; finish times calculated in code. **Finish before** defaults to **Any time**; choose **Set a time…** for a specific limit, or return to **Any time** to remove it. Reset and voice searches synchronise this control. “Before” is strict, and past screenings are excluded.
+- Mood, date, runtime and finish-time filters; finish times calculated in code. **Finish before** is one compact field: click **Any time** to enter a cutoff, and use the × to remove it. Both states keep the same height. Reset and voice searches synchronise this control. “Before” is strict, and past screenings are excluded.
 - One to six simulated tickets at S$12 each, expiring review cards and stable demo references on retries.
 - An AssemblyAI Voice Agent API client: temporary tokens, microphone PCM resampling, streamed playback, transcripts, interruption handling and two validated tools.
 - A microphone selector, real input waveform and six-second **Test mic** check. The local test sends no audio to AssemblyAI and releases the microphone afterwards; an active conversation can switch input without opening another provider session.

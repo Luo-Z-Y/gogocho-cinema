@@ -151,3 +151,13 @@ Verification on 16 September 2026 (Singapore): all 17 existing automated tests a
 Temporary verification artefacts: `/private/tmp/gogocho-any-time-check.cjs`, `/private/tmp/gogocho-any-time-default.png` and `/private/tmp/gogocho-any-time-specific.png`. These contain no credentials and are not committed.
 
 Version control decision: commit this completed, verified filter change locally. No push because no remote is configured. The aligned Obsidian notes remain outside the software repository. Next: complete the full spoken booking rehearsal.
+
+## 16 September 2026 — Compact finish-time control
+
+The user disliked the stacked Set a time selector and time input. Against baseline `977dbb2`, replaced them with one 42 px field: **Any time** and a clock icon switch directly to an editable time, with an inline × to restore Any time. The filter row no longer grows or moves its neighbouring controls when a cutoff is entered. The label follows the active control; keyboard activation focuses the native time input, and clearing returns focus to Any time. A specific cutoff remains required while editing. Reset, other filter values and voice-tool synchronisation retain their behaviour.
+
+Updated HTML, client event handling and CSS, plus README, the demo checklist and both Obsidian project notes. No server, catalogue, booking or provider changes.
+
+Verification: all 17 existing automated tests and syntax/catalogue checks passed. Automated Chrome 152.0.7977.83 checks used 17 September screenings and verified the strict cutoff, clearing without losing mood, reset, keyboard activation/focus, and simulated voice-tool calls with an exact 18:37 cutoff and without a cutoff. At 1440/801/390/320 px, both states had identical filter-row height and no page overflow. Inspected screenshots at 1440/801/320 px; no page errors or provider token requests. This is local UI and simulated-tool evidence, not a new live conversation. Temporary script and screenshots use the `/private/tmp/gogocho-compact-time-` prefix.
+
+Version control decision: commit the completed, verified interface refinement locally. No push because no remote is configured. Obsidian notes remain outside the software repository. The full spoken booking rehearsal remains the next milestone.

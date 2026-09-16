@@ -22,7 +22,7 @@ Use a future date when rehearsing so the film has not already started. All times
 
 ## Edge cases
 
-- Finish before starts at Any time with no limit. Choose Set a time… and enter 18:37 on a future date; screenings finishing at or after that time must be excluded. Return to Any time and submit: later screenings should return while the other filters stay selected. Reset filters must also restore Any time. A simulated voice search with an arbitrary minute must reveal that exact time; one without endBefore must restore Any time. This browser check does not establish live-agent preference handling.
+- Finish before starts at Any time with no limit. Click it and enter 18:37 on a future date; screenings finishing at or after that time must be excluded. Use the × (accessible name: Any time — remove finish-time limit) and submit: later screenings should return while the other filters stay selected. The field and filter row must keep their height in both states, with keyboard focus moving into the time input and back to Any time on clearing. Reset filters must also restore Any time. A simulated voice search with an arbitrary minute must reveal that exact time; one without endBefore must restore Any time. This browser check does not establish live-agent preference handling.
 - After comparing films, select one without repeating the date, mood, runtime or finish-time preferences: the agent should retain the relevant constraints rather than silently drop them.
 - Use an unclear or partial title that does not uniquely identify a film: the agent should clarify before selecting a screening or opening a review, not invent a film or identifier.
 - Request a tense film under 80 minutes: no match, with a request to relax a preference.
