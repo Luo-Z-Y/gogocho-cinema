@@ -71,6 +71,19 @@ npm run check
 
 Automated tests cover scheduling, constraints, review validation, cookie isolation, token handling and audio resampling. Chrome browser checks cover responsive layouts, filtering, demo confirmation, and a simulated voice session with a real browser AudioWorklet. **Live AssemblyAI token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. A generated spoken phrase was transcribed through the live browser pipeline, and the user confirmed their AirPods conversation works after microphone selection and capture recovery improvements. A full spoken booking journey remains to be checked.** See [progress](docs/PROGRESS.md) and the [demo checklist](docs/DEMO.md).
 
+## Next milestone
+
+**Current stage: local prototype working; full spoken booking verification pending.** On 16 September 2026, the documentation checkpoint reran all 17 automated tests and the syntax/catalogue checks successfully. No new browser or live-provider session was run at that checkpoint; earlier live evidence is recorded separately in [the detailed progress log](docs/PROGRESS.md).
+
+The delivery order is:
+
+1. Complete and record the [spoken demo journey](docs/DEMO.md), from constrained discovery to an explicitly confirmed fictional booking and microphone release.
+2. Test live interruptions, preference carry-over, ambiguous titles, no-match recovery and quantity changes; fix observed failures and retest.
+3. Prepare controlled HTTPS hosting, durable access/rate controls and an authorised repository remote before public sharing.
+4. Recheck event requirements and prepare the demo, public source, video, slides and submission materials.
+
+No public deployment or submitted entry is claimed, and no Git remote is configured. Progress entries must distinguish automated/simulated checks, manual browser checks, live-provider checks and user reports; include failures, remaining risks and the next action. Keep the linked Obsidian project notes aligned with the repository documentation.
+
 ## Data and assets
 
 Catalogue copy, cinema details, typographic poster layouts and colour choices were created for this project with AI assistance. No external film APIs, real-film summaries, movie posters, scraped listings or third-party stock imagery are included. Incidental title overlap with real works is possible; these are fictional catalogue entries, not representations of those works.
