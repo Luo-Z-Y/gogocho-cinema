@@ -17,6 +17,13 @@ function filters() {
   const values = Object.fromEntries(new FormData(form));
   return Object.fromEntries(Object.entries(values).filter(([,v]) => v !== '').map(([k,v]) => [k, k === 'maxRuntime' ? Number(v) : v]));
 }
+function syncFinishTime(specific = Boolean(form.elements.endBefore.value)) {
+  const input = form.elements.endBefore;
+  $('#finish-mode').value = specific ? 'before' : '';
+  input.hidden = input.disabled = !specific;
+  input.required = specific;
+  if (!specific) input.value = '';
+}
 function renderFilms(results) {
   $('#film-count').textContent = `${results.length} screening${results.length === 1 ? '' : 's'}`;
   $('#films').innerHTML = results.length ? results.map(s => {
@@ -48,7 +55,8 @@ async function prepare(screeningId, quantity) {
 }
 $('#films').addEventListener('click', e => { const button = e.target.closest('[data-screening]'); if (button) prepare(button.dataset.screening, 2); });
 form.addEventListener('submit', e => { e.preventDefault(); search(); });
-$('#reset').onclick = () => { form.reset(); form.elements.date.value = data.today; search(); };
+$('#finish-mode').onchange = () => { syncFinishTime($('#finish-mode').value === 'before'); if (!form.elements.endBefore.hidden) form.elements.endBefore.focus(); };
+$('#reset').onclick = () => { form.reset(); syncFinishTime(); form.elements.date.value = data.today; search(); };
 $('#close-booking').onclick = () => booking.close();
 $('#quantity').onchange = () => { if (quote) prepare(quote.screening.id, Number($('#quantity').value)); };
 $('#booking-form').onsubmit = async e => {
@@ -69,6 +77,7 @@ async function runTool(name, args) {
     ++searchVersion;
     form.reset();
     for (const [key,value] of Object.entries(args)) if (form.elements[key]) form.elements[key].value = String(value);
+    syncFinishTime();
     renderFilms(result.results);
   } else if (name === 'prepare_booking') { ++quoteVersion; showQuote(result); }
   return result;

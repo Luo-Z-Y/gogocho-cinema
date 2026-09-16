@@ -19,7 +19,7 @@
           <label>Day<select name="date" id="date"></select></label>
           <label>Mood<select name="mood"><option value="">Any mood</option><option value="light">Light</option><option value="gentle">Gentle</option><option value="wonder">Wonder</option><option value="tense">Tense</option></select></label>
           <label>Length<select name="maxRuntime"><option value="">Any length</option><option value="119">Under two hours</option><option value="99">Under 100 minutes</option></select></label>
-          <label>Finish before<input type="time" name="endBefore" aria-label="Finish before, Singapore time"></label>
+          <div class="finish-filter"><label for="finish-mode">Finish before</label><select id="finish-mode"><option value="">Any time</option><option value="before">Set a time…</option></select><input type="time" name="endBefore" aria-label="Finish before, Singapore time" hidden disabled></div>
           <button type="submit" class="filter-button">Find films</button>
         </form>
         <div class="programme-note"><span id="film-count"></span><button type="button" id="reset" class="text-button">Reset filters</button></div>

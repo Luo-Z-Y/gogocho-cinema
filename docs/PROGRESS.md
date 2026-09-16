@@ -139,3 +139,15 @@ For each future work session, record:
 Do not put API keys, temporary tokens, cookies, `.env` contents or personal conversation details into evidence. Use the run-record template in `docs/DEMO.md`; no raw microphone recordings are required.
 
 Version control decision: commit this verified documentation checkpoint locally. Do not push: no remote is configured. The Obsidian vault is separate and is not a Git repository, so its note updates remain outside the software commit.
+
+## 16 September 2026 — Explicit Any time filter
+
+The user requested an unrestricted option for Finish before. Against baseline `e7337ab`, replaced the bare time field with a compact selector defaulting to **Any time**. **Set a time…** reveals and focuses the native time input; a chosen time is required before submitting that mode. Returning to Any time clears and disables the input, so the request omits `endBefore` while retaining the other filters. Reset and voice-tool results synchronise the selector, including arbitrary minute values. The server already supports an omitted limit; no catalogue, provider or booking logic changed.
+
+Changed `public/index.html`, `public/app.js` and `public/style.css`; updated README, the demo checklist and the linked Obsidian plan/progress notes.
+
+Verification on 16 September 2026 (Singapore): all 17 existing automated tests and `npm run check` passed. Automated local browser checks in Chrome 152.0.7977.83 used 17 September screenings: Light returned two results, a strict 18:36 cutoff returned one, and Any time restored two without losing the mood. A simulated call to the existing voice-tool UI callback set 18:37 and displayed five screenings; a subsequent call without a cutoff restored Any time and all eight. Default, required input/focus, reset, and overflow at 1440/801/390/320 px passed, with no page errors or provider token calls. Inspected default and specific-time screenshots at the user's 801 px viewport and reloaded the in-app preview. This verifies UI synchronisation, not a new live voice conversation; full spoken booking remains pending.
+
+Temporary verification artefacts: `/private/tmp/gogocho-any-time-check.cjs`, `/private/tmp/gogocho-any-time-default.png` and `/private/tmp/gogocho-any-time-specific.png`. These contain no credentials and are not committed.
+
+Version control decision: commit this completed, verified filter change locally. No push because no remote is configured. The aligned Obsidian notes remain outside the software repository. Next: complete the full spoken booking rehearsal.
