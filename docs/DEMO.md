@@ -1,6 +1,6 @@
 # Demo and verification checklist
 
-Use a future date when rehearsing so the film has not already started. All times are Singapore time. No live provider test is claimed until a key is configured and a spoken journey is completed.
+Use a future date when rehearsing so the film has not already started. All times are Singapore time. Live token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. The spoken journey below still needs a browser microphone test.
 
 ## Core journey
 

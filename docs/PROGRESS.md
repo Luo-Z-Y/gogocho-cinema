@@ -32,3 +32,14 @@ Reduced the visible copy at the user's request: removed slogans, introductory pa
 Verification: all 15 existing tests and syntax/catalogue checks pass. Desktop and mobile browser checks cover filters, Details disclosure, demo confirmation and the mock voice flow. Live AssemblyAI remains unverified.
 
 Updated the README and Obsidian project notes. Commit the verified interface change locally; no push because no remote is configured.
+
+
+## 16 September 2026 — Voice configured
+
+The user saved the AssemblyAI key in the local `.env` file. Confirmed that the file is excluded from Git and has owner-only read/write permissions; no credential was displayed or committed. Restarted the local server with the saved configuration.
+
+A short live check succeeded: temporary token issued, WebSocket session ready, inline configuration accepted, greeting audio received and greeting transcript received. Sent `session.end` and closed the test connection. This establishes working API access; it does not verify microphone quality, a full spoken booking journey or the account's remaining credits.
+
+Next: refresh the local cinema, press Start talking, allow microphone access and complete the spoken demo checklist. The local server remains running.
+
+Version control decision: commit the verified setup record and updated documentation only. Keep `.env` private and untracked. No push because no remote is configured.

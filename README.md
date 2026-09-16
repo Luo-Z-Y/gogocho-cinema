@@ -66,7 +66,7 @@ npm test
 npm run check
 ```
 
-Automated tests cover scheduling, constraints, review validation, cookie isolation, token handling and audio resampling. Chrome browser checks cover responsive layouts, filtering, demo confirmation, and a simulated voice session with a real browser AudioWorklet. **No live AssemblyAI conversation has been verified yet.** See [progress](docs/PROGRESS.md) and the [demo checklist](docs/DEMO.md).
+Automated tests cover scheduling, constraints, review validation, cookie isolation, token handling and audio resampling. Chrome browser checks cover responsive layouts, filtering, demo confirmation, and a simulated voice session with a real browser AudioWorklet. **Live AssemblyAI token issuance, session configuration and greeting audio/transcript were verified on 16 September 2026. A spoken browser conversation and microphone quality still need testing.** See [progress](docs/PROGRESS.md) and the [demo checklist](docs/DEMO.md).
 
 ## Data and assets
 
