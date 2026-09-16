@@ -22,7 +22,7 @@ cp .env.example .env
 npm start
 ```
 
-Press **Talk to the box office** and allow microphone access. Try: “Something light, under two hours, tomorrow, finishing before ten.” Choose a screening and ticket quantity, then press **Confirm demo booking** on the review card. Voice prepares the review; confirmation is an explicit on-screen action in this version. Typing is also available during an active voice session.
+Press **Start talking** and allow microphone access. Try: “Something light, under two hours, tomorrow, finishing before ten.” Choose a screening and ticket quantity, then press **Confirm demo booking** on the review card. Voice prepares the review; confirmation is an explicit on-screen action in this version. Typing is also available during an active voice session.
 
 ## What is implemented
 
@@ -31,7 +31,8 @@ Press **Talk to the box office** and allow microphone access. Try: “Something 
 - Mood, date, runtime and finish-time filters; finish times calculated in code. “Before” is strict, and past screenings are excluded.
 - One to six simulated tickets at S$12 each, expiring review cards and stable demo references on retries.
 - An AssemblyAI Voice Agent API client: temporary tokens, microphone PCM resampling, streamed playback, transcripts, interruption handling and two validated tools.
-- Responsive layouts, native labelled controls, reduced-motion support and a keyboard-operable booking dialogue.
+- A minimal interface with concise labels and one title per poster. Film descriptions, language and audience guidance open under **Details**.
+- Responsive layouts, native labelled controls, reduced-motion support and keyboard-operable film details and booking dialogue.
 
 All films, screening times, prices and bookings are fictional. Content notes are editorial guidance, not official age ratings. No seats are held, no real tickets are issued, and no payment is taken.
 

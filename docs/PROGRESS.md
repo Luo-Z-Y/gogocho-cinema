@@ -23,3 +23,12 @@ Next:
 The Obsidian project notes are maintained in the sibling `whatever-it-takes` vault under `03 Projects/Gogocho`. Keep their status aligned with this file and the README. The local prototype is not a submitted or deployed hackathon entry.
 
 Version control decision: commit this verified local foundation. Do not push or publish yet: no remote is configured. The Obsidian vault is separate and is not a Git repository.
+
+
+## 16 September 2026 — Minimal interface
+
+Reduced the visible copy at the user's request: removed slogans, introductory paragraphs, repeated poster labels, duplicate film titles and decorative footer text. Film descriptions, language and audience guidance now sit inside a keyboard-operable Details disclosure. The voice panel is smaller, with one clear Start talking action and concise status/privacy text. Booking copy is shorter, with the demo/no-payment notice retained at confirmation.
+
+Verification: all 15 existing tests and syntax/catalogue checks pass. Desktop and mobile browser checks cover filters, Details disclosure, demo confirmation and the mock voice flow. Live AssemblyAI remains unverified.
+
+Updated the README and Obsidian project notes. Commit the verified interface change locally; no push because no remote is configured.

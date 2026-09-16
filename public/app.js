@@ -21,8 +21,8 @@ function renderFilms(results) {
   $('#film-count').textContent = `${results.length} screening${results.length === 1 ? '' : 's'}`;
   $('#films').innerHTML = results.length ? results.map(s => {
     const f = s.film;
-    return `<article class="film"><div class="poster" style="--film:${f.colour};--ink:${f.ink}" aria-hidden="true"><div class="poster-top"><span>GOGOCHO ORIGINALS</span><span>${f.mark} / 08</span></div><div class="poster-title">${escape(f.title)}</div><span class="poster-number">${f.mark}</span><div class="poster-bottom">${escape(f.genre.toUpperCase())} · ${f.runtime} MIN</div></div><p class="film-meta">${escape(f.genre)} · ${f.runtime} min · ${escape(f.language)}</p><h3>${escape(f.title)}</h3><p class="film-desc">${escape(f.description)}</p><div class="screenings"><button class="screening" data-screening="${escape(s.id)}" aria-label="Select ${escape(f.title)} at ${s.startTime}">${s.startTime}<span>Ends ${s.endTime} · Screen ${s.screen}</span></button></div><details class="content-notes"><summary>Audience & content notes</summary><p>${escape(f.audience)}. ${escape(f.contentNotes)}</p></details></article>`;
-  }).join('') : '<div class="empty"><h3>A different evening, perhaps?</h3><p>No future screenings match these choices.<br>Try another day, mood or finish time.</p></div>';
+    return `<article class="film"><div class="poster" style="--film:${f.colour};--ink:${f.ink}"><span class="poster-index" aria-hidden="true">${f.mark}</span><h3 class="poster-title">${escape(f.title)}</h3></div><div class="film-info"><p class="film-meta">${escape(f.genre)} · ${f.runtime} min</p><button class="screening" data-screening="${escape(s.id)}" aria-label="Select ${escape(f.title)} at ${s.startTime}">${s.startTime}<span>Ends ${s.endTime}</span></button></div><details class="film-details"><summary aria-label="Details about ${escape(f.title)}">Details</summary><p>${escape(f.description)}</p><p>${escape(f.language)} · Screen ${s.screen}</p><p>${escape(f.audience)}. ${escape(f.contentNotes)}</p></details></article>`;
+  }).join('') : '<div class="empty"><h3>No matching films</h3><p>Try another day or change a filter.</p></div>';
 }
 async function search() {
   const version = ++searchVersion;
@@ -31,13 +31,13 @@ async function search() {
 }
 function showQuote(value) {
   quote = value;
-  $('#booking-heading').textContent = 'Make an evening of it.';
+  $('#booking-heading').textContent = 'Review booking';
   $('#booking-details').innerHTML = `<h3>${escape(value.film.title)}</h3><div class="booking-row"><span>Screening</span><span>${escape(dateLabel(value.screening.date))}, ${value.screening.startTime}</span></div><div class="booking-row"><span>Screen ${value.screening.screen}</span><span>Ends ${value.screening.endTime} SGT</span></div><div class="booking-row"><span>Demo total · ${value.quantity} ticket${value.quantity === 1 ? '' : 's'}</span><strong>${currency(value.totalCents)}</strong></div>`;
   $('#quantity').value = value.quantity;
   $('#quantity').disabled = false;
   $('#booking-form').hidden = false;
   $('#confirm').disabled = false;
-  $('#booking-message').textContent = 'Review these details before confirming your simulated booking.';
+  $('#booking-message').textContent = '';
   if (!booking.open) booking.showModal();
 }
 async function prepare(screeningId, quantity) {
@@ -56,9 +56,9 @@ $('#booking-form').onsubmit = async e => {
   $('#confirm').disabled = true; $('#quantity').disabled = true;
   try {
     const result = await post('/api/confirm', { quoteId: quote.id });
-    $('#booking-heading').textContent = 'Your imaginary evening is set.';
+    $('#booking-heading').textContent = 'Demo confirmed';
     $('#booking-form').hidden = true;
-    $('#booking-message').textContent = `${result.reference} · ${result.notice}`;
+    $('#booking-message').textContent = result.reference;
     voice?.context(`The visitor explicitly pressed Confirm demo booking. Result: ${JSON.stringify(result)}`);
   } catch(e) { $('#booking-message').textContent = e.message; $('#quantity').disabled = false; $('#confirm').disabled = false; }
 };
@@ -87,16 +87,16 @@ async function init() {
     await search();
     voice = new VoiceBoxOffice({ post, runTool, transcript, state: (active, message) => {
       $('.box-office').classList.toggle('live', active);
-      $('#voice-start').textContent = active ? 'End conversation' : 'Talk to the box office ↗';
+      $('#voice-start').textContent = active ? 'End conversation' : 'Start talking ↗';
       $('#voice-start').disabled = false;
       $('#voice-status').textContent = message;
       $('#chat').hidden = !active;
     }});
-    $('#voice-status').textContent = data.voiceConfigured ? 'Ready when you are. Microphone permission is needed.' : 'Voice setup pending. Explore the programme and try a demo booking below.';
+    $('#voice-status').textContent = data.voiceConfigured ? 'Ready when you are.' : 'Voice setup pending';
     $('#voice-start').onclick = async () => {
       if (voice.active) { voice.stop(); return; }
       if (!data.voiceConfigured) { notice('Add ASSEMBLYAI_API_KEY to the project’s local .env file and restart the server to enable voice.'); return; }
-      $('#voice-start').disabled = true; $('#voice-status').textContent = 'Connecting to the box office…'; $('#transcript').replaceChildren();
+      $('#voice-start').disabled = true; $('#voice-status').textContent = 'Connecting…'; $('#transcript').replaceChildren();
       await voice.start();
     };
     $('#chat').onsubmit = e => { e.preventDefault(); const text = $('#message').value.trim(); if (text) { voice.text(text); $('#message').value = ''; } };
