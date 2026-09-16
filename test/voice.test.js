@@ -1,0 +1,48 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { VoiceBoxOffice } from '../public/voice.js';
+
+function fixture() {
+  const sent = [];
+  const voice = new VoiceBoxOffice({ state: () => {}, transcript: () => {}, runTool: async () => ({ results: [] }) });
+  voice.active = true;
+  voice.ws = { readyState: WebSocket.OPEN, send: value => sent.push(JSON.parse(value)), close: () => {} };
+  return { voice, sent };
+}
+
+test('a hold tool returns a validated result without starting a second reply', async () => {
+  const { voice, sent } = fixture();
+  await voice.tool({ name: 'search_screenings', arguments: {}, call_id: 'a' }, voice.generation);
+  assert.deepEqual(sent.map(m => m.type), ['tool.result']);
+  assert.equal(sent[0].call_id, 'a');
+  assert.equal(sent[0].is_error, false);
+  await voice.tool({ name: 'confirm_booking', call_id: 'b' }, voice.generation);
+  assert.equal(sent[1].is_error, true);
+});
+
+test('interruption clears scheduled speech; typed messages wait for the active reply', () => {
+  const { voice, sent } = fixture();
+  let stopped = 0;
+  voice.sources.add({ stop: () => stopped++, disconnect: () => {} });
+  voice.event({ type: 'reply.started' }, voice.generation);
+  voice.text('Actually, something gentle.');
+  assert.equal(sent.length, 0);
+  voice.event({ type: 'reply.done', status: 'interrupted' }, voice.generation);
+  assert.equal(stopped, 1);
+  assert.equal(voice.sources.size, 0);
+  assert.deepEqual(sent.map(m => m.type), ['conversation.message', 'reply.create']);
+});
+
+test('ending a session releases the mic and discards late tool results', async () => {
+  const { voice, sent } = fixture();
+  let released = false, finish;
+  voice.stream = { getTracks: () => [{ stop: () => { released = true; } }] };
+  voice.runTool = () => new Promise(resolve => { finish = resolve; });
+  const pending = voice.tool({ name: 'search_screenings', arguments: {}, call_id: 'slow' }, voice.generation);
+  voice.stop();
+  finish({ results: [] });
+  await pending;
+  assert.ok(released);
+  assert.equal(voice.active, false);
+  assert.deepEqual(sent.map(m => m.type), ['session.end']);
+});

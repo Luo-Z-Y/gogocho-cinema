@@ -1,0 +1,25 @@
+# Progress
+
+## 16 September 2026 — First local prototype
+
+Working name: Gogocho Cinema. User is participating solo as lablab team Gogocho. The lablab team has not been renamed.
+
+Implemented the original eight-film catalogue, rolling Singapore programme, responsive browser interface, deterministic screening tools and explicit demo confirmation. Added the server token exchange and AssemblyAI browser voice client with resampling, playback, interruption handling and microphone cleanup. The local server has no dependencies beyond Node.js 22.9 (the minimum for the optional environment-file startup flag).
+
+Verification:
+
+- All 15 Node tests passed: screening dates and finish times, strict filter boundaries, non-overlapping screenings, invalid input, review expiry, stable confirmation retries, cookie isolation, missing credentials, provider errors, token caps, 24/44.1/48 kHz audio timing, hold-tool events, interruptions and session cleanup.
+- JavaScript syntax and catalogue validation.
+- Chrome interface checks passed at 1440 px, 390 px and 320 px: mood/time filtering, no-match recovery, three-ticket S$36 review, explicit confirmation and the missing-key message. A simulated WebSocket session used the real browser AudioWorklet, updated the programme through tools, opened a booking review and ended cleanly. No page errors were observed. This does not establish live-provider behaviour.
+- Live AssemblyAI conversation, account credits and API entitlement remain unverified; no API key was read or stored during setup.
+
+Next:
+
+1. Add the API key locally and test a real voice session, including interruptions and noisy audio.
+2. Test ambiguous film titles, preference carry-over and no-match recovery with the live agent; tune the prompt from observed behaviour.
+3. Decide the final product/team name and update lablab if desired.
+4. Prepare authentication and durable rate limiting for public deployment, then a public repository, demo, video and slides.
+
+The Obsidian project notes are maintained in the sibling `whatever-it-takes` vault under `03 Projects/Gogocho`. Keep their status aligned with this file and the README. The local prototype is not a submitted or deployed hackathon entry.
+
+Version control decision: commit this verified local foundation. Do not push or publish yet: no remote is configured. The Obsidian vault is separate and is not a Git repository.

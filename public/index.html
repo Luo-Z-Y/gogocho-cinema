@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Find your next story at Gogocho, a fictional independent cinema with a conversational box office.">
+  <title>Gogocho Cinema — Find your kind of film</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#programme">Skip to programme</a>
+  <header class="masthead"><a class="brand" href="/" aria-label="Gogocho Cinema home">gogocho<span>CINEMA</span></a><div class="header-note">Independent stories.<br>Unexpected evenings.</div><span class="demo-label">A FICTIONAL CINEMA</span></header>
+  <main>
+    <div class="opening"><div><p class="eyebrow">THE PROGRAMME · SINGAPORE TIME</p><h1>Find your<br><em>kind of film.</em></h1></div><p class="intro">A little curious? A little undecided?<br>Tell our box office what you're in the mood for.<br>We'll find a story for your evening.</p></div>
+    <div class="cinema-layout">
+      <section id="programme" aria-labelledby="programme-heading">
+        <div class="section-heading"><h2 id="programme-heading">On the screen</h2><span id="film-count" class="muted"></span></div>
+        <form id="filters" class="filters">
+          <label>Day<select name="date" id="date"></select></label>
+          <label>The feeling<select name="mood"><option value="">Anything goes</option><option value="light">Something light</option><option value="gentle">A quiet evening</option><option value="wonder">A little wonder</option><option value="tense">Keep me guessing</option></select></label>
+          <label>Length<select name="maxRuntime"><option value="">Any length</option><option value="119">Under two hours</option><option value="99">Under 100 minutes</option></select></label>
+          <label>Finish before<input type="time" name="endBefore" aria-label="Finish before, Singapore time"></label>
+          <button type="submit" class="filter-button">Find films</button>
+        </form>
+        <div class="programme-note"><span>Original films. Imaginary worlds.</span><button type="button" id="reset" class="text-button">Reset filters</button></div>
+        <div id="films" class="film-grid" aria-live="polite"><p>Opening the programme…</p></div>
+      </section>
+      <aside class="box-office" aria-labelledby="box-heading">
+        <div class="bo-top"><span class="eyebrow">YOUR EVENING STARTS HERE</span><span class="bo-number">BO / 01</span></div>
+        <h2 id="box-heading">The box office.</h2>
+        <p>Good films start with a conversation.</p>
+        <div class="voice-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <button type="button" id="voice-start" class="primary">Talk to the box office <span aria-hidden="true">↗</span></button>
+        <p id="voice-status" class="voice-status" role="status">Checking the box office…</p>
+        <p class="privacy">Starting voice shares your microphone audio with AssemblyAI. Transcripts appear here during your visit.</p>
+        <div class="suggestion"><span class="eyebrow">TRY ASKING</span><p>“Something light that finishes before ten.”</p></div>
+        <div id="transcript" class="transcript" role="log" aria-label="Voice conversation" aria-live="polite"></div>
+        <form id="chat" class="chat" hidden><label for="message" class="sr-only">Send a message during your voice session</label><input id="message" placeholder="Or type a message…" maxlength="500" autocomplete="off"><button aria-label="Send message">↗</button></form>
+        <div class="ticket-note"><span aria-hidden="true">✳</span><p>All films and screenings are fictional.<br>Bookings are a simulation. No payment.</p></div>
+      </aside>
+    </div>
+  </main>
+  <footer><span class="brand small-brand">gogocho<span>CINEMA</span></span><p>Made for the love of a good story.</p><span>SOLO BUILD · ASSEMBLYAI HACKATHON</span></footer>
+  <dialog id="booking" aria-labelledby="booking-heading">
+    <div class="dialog-top"><span class="eyebrow">BOX OFFICE · DEMO ONLY</span><button type="button" id="close-booking" class="close" aria-label="Close booking">×</button></div>
+    <h2 id="booking-heading">Make an evening of it.</h2>
+    <div id="booking-details"></div>
+    <form id="booking-form"><label for="quantity">Tickets</label><select id="quantity"><option value="1">1 ticket</option><option value="2" selected>2 tickets</option><option value="3">3 tickets</option><option value="4">4 tickets</option><option value="5">5 tickets</option><option value="6">6 tickets</option></select><button id="confirm" class="primary" type="submit">Confirm demo booking</button></form>
+    <p id="booking-message" role="status"></p><p class="muted">Fictional screening · No payment taken · No real seats reserved</p>
+  </dialog>
+  <div id="notice" class="notice" role="alert" hidden></div>
+</body>
+</html>
