@@ -1,15 +1,39 @@
-// AssemblyAI owns the voice session; only single-use tokens reach this client.
+/**
+ * Browser voice transport and audio lifecycle, independent of page markup.
+ *
+ * AssemblyAI manages the conversation; this class captures PCM, plays replies
+ * and bridges explicit tool events to the application's validated HTTP API.
+ * Only a temporary token reaches this module, never the permanent provider key.
+ * All visible UI work is delegated to callbacks supplied by frontend/app.js.
+ */
 export class VoiceBoxOffice {
+  /**
+   * post/runTool are async application adapters. transcript/state/input/devices
+   * report changes to the UI; optional diagnostics callbacks also let unit tests
+   * exercise protocol behaviour without a DOM or physical microphone.
+   */
   constructor({ post, runTool, transcript, state, input = () => {}, devices = () => {} }) {
     Object.assign(this, { post, runTool, transcript, state, input, devices });
     this.active = false;
+    // A generation identifies a capture/conversation attempt. Incrementing it
+    // invalidates old setup completions and late tool delivery to a closed session.
     this.generation = 0;
+    // Keep scheduled audio nodes so an interruption can stop queued speech too.
     this.sources = new Set();
+    // Typed input/application context wait until the active reply has finished.
     this.pendingMessages = [];
+    // Accumulate agent transcript fragments by item ID until the final snapshot.
     this.agentText = new Map();
   }
 
+  /**
+   * Start either a six-second local mic test or one provider conversation.
+   * Capture is shared by both modes, but testOnly returns before token/socket
+   * creation. Check the generation after awaits: permission prompts and network
+   * requests may finish after the user has already ended this attempt.
+   */
   async start(deviceId = '', testOnly = false) {
+    // Block duplicate clicks while permission, device setup or a test is pending.
     if (this.active || this.starting || this.testing) return;
     this.starting = true;
     this.testing = testOnly;
@@ -17,12 +41,16 @@ export class VoiceBoxOffice {
     this.peakLevel = 0;
     this.lastMeterAt = 0;
     this.state(false, testOnly ? 'Say a few words to test your mic…' : 'Connecting…');
+    // Capture this attempt's identity rather than reading only the active flag:
+    // a later conversation may already be active when an old await completes.
     const generation = ++this.generation;
     const current = () => generation === this.generation;
     this.connectTimer = setTimeout(() => this.stop('Connection timed out. Please try again.'), 30000);
     try {
       if (!navigator.mediaDevices?.getUserMedia || !globalThis.AudioContext) throw new Error('Use a current browser on localhost to enable your microphone.');
-      // Create and resume audio in the click gesture, at the hardware rate.
+      // Create/resume contexts within the click gesture for browser autoplay
+      // rules. Capture runs at its actual device/context rate; the worklet will
+      // resample it to 24 kHz. Playback uses a separate scheduling clock/graph.
       this.capture = new AudioContext();
       this.playback = new AudioContext();
       await Promise.all([this.capture.resume(), this.playback.resume()]);
@@ -32,27 +60,39 @@ export class VoiceBoxOffice {
       this.stream = stream;
       this.track = stream.getAudioTracks()[0];
       this.bindTrack();
-      // Bluetooth can change the hardware audio route when microphone access starts.
+      // Permission can change the hardware route, especially with Bluetooth.
+      // Resume again after getUserMedia rather than assuming the earlier resume
+      // survived that change. Late-acquired streams above are stopped immediately.
       await Promise.all([this.capture.resume(), this.playback.resume()]);
       if (!current()) return;
       await this.listInputs();
       if (!current()) return;
       await this.capture.audioWorklet.addModule(new URL('./pcm-worklet.js', import.meta.url));
       if (!current()) return;
+      // Connect capture to the separately loaded audio-thread processor. Each
+      // port message is one transferred 20 ms PCM frame, not a transcript.
       this.mic = this.capture.createMediaStreamSource(stream);
       this.worklet = new AudioWorkletNode(this.capture, 'gogocho-pcm', { processorOptions: { inputSampleRate: this.capture.sampleRate } });
       this.worklet.port.onmessage = ({ data }) => {
         if (!current()) return;
+        // Measure input during setup/testing too, but transmit only after the
+        // provider has marked this session ready. Test mic never becomes active.
         this.inspectInput(data);
         if (this.active && current()) {
+          // Bound queued socket bytes rather than allowing ever-growing latency.
+          // The queue includes JSON/base64 overhead, not just raw audio samples.
           if (this.ws.bufferedAmount > 192000) { this.stop('The connection is too slow for live audio. Please try again.'); return; }
           this.send({ type: 'input.audio', audio: btoa(String.fromCharCode(...new Uint8Array(data))) });
         }
       };
-      // The worklet produces silent output, so the mic is never monitored locally.
+      // Connecting to the destination keeps the processing graph running. The
+      // worklet never writes to its audio output, so this does not monitor the
+      // microphone through the speakers; only PCM messages leave the worklet.
       this.mic.connect(this.worklet).connect(this.capture.destination);
       this.captureStartedAt = Date.now();
       this.micTimer = setInterval(() => this.checkInput(), 1000);
+      // Local diagnostics use peak input over the whole test, not merely the
+      // final frame. Return here so no provider token is requested or consumed.
       if (testOnly) {
         clearTimeout(this.connectTimer);
         this.starting = false;
@@ -62,6 +102,9 @@ export class VoiceBoxOffice {
         }, 6000);
         return;
       }
+      // The server exchanges its private key for this short-lived token. Do not
+      // log the socket URL: it contains the temporary credential in its query.
+      // Send the non-secret session configuration only once the socket is open.
       const { token, config } = await this.post('/api/voice-session', {});
       if (!current()) return;
       const url = new URL('wss://agents.assemblyai.com/v1/ws');
@@ -80,10 +123,20 @@ export class VoiceBoxOffice {
     }
   }
 
+  /**
+   * Request mono capture with echo cancellation. Avoid browser noise suppression
+   * here so quiet input is not additionally gated. An explicit device uses an
+   * exact constraint; an empty ID intentionally leaves selection to the system.
+   */
   constraints(deviceId) {
     return { echoCancellation: true, noiseSuppression: false, channelCount: 1, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) };
   }
 
+  /**
+   * Best-effort device discovery, not microphone capture. Labels may be absent
+   * before permission; report usable fallbacks and the current track's actual ID.
+   * Failure to enumerate should not terminate otherwise working capture.
+   */
   async listInputs() {
     if (!navigator.mediaDevices?.enumerateDevices) return;
     try {
@@ -92,11 +145,17 @@ export class VoiceBoxOffice {
     } catch { /* Device discovery must not prevent a permitted mic from working. */ }
   }
 
+  /** A disconnected track ends capture; a muted track gets a distinct warning. */
   bindTrack() {
     this.track.onended = () => this.stop('Microphone disconnected. Choose an input and restart.');
     this.track.onmute = () => this.input(0, 'Microphone muted. Check your input.', true);
   }
 
+  /**
+   * Switch only the capture source within an active conversation. Reuse its
+   * worklet and provider socket, avoiding another token/session charge. A stream
+   * obtained after stop() belongs to an obsolete generation and must be released.
+   */
   async changeInput(deviceId) {
     if (!this.active) return;
     const generation = this.generation;
@@ -104,6 +163,8 @@ export class VoiceBoxOffice {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: this.constraints(deviceId) });
       if (generation !== this.generation) { stream.getTracks().forEach(t => t.stop()); return; }
+      // Prepare the replacement before retiring the previous track. Remove its
+      // handlers first so our intentional stop is not reported as disconnection.
       const mic = this.capture.createMediaStreamSource(stream);
       mic.connect(this.worklet);
       this.mic.disconnect();
@@ -115,12 +176,19 @@ export class VoiceBoxOffice {
       await this.capture.resume();
       await this.listInputs();
     } catch {
+      // Release an unused replacement without stopping whichever stream is now
+      // installed. A failure before handover can leave the original input usable.
       if (stream && stream !== this.stream) stream.getTracks().forEach(t => t.stop());
       this.input(0, 'Could not switch microphone. Check the selected input.', true);
       await this.listInputs();
     }
   }
 
+  /**
+   * Measure normalised RMS energy from little-endian signed PCM16. This detects
+   * input level, not speech or transcription quality. Track frame arrival and
+   * above-threshold sound independently so a stalled worklet is not called silent.
+   */
   inspectInput(buffer) {
     const samples = new DataView(buffer);
     let energy = 0;
@@ -130,6 +198,8 @@ export class VoiceBoxOffice {
     this.lastFrameAt = now;
     this.peakLevel = Math.max(this.peakLevel || 0, rms);
     if (rms >= 0.002) this.lastSoundAt = now;
+    // Audio arrives roughly 50 times/second; cap UI updates near 10/second.
+    // The display gain below affects only the meter, not the transmitted samples.
     if (!this.lastMeterAt || now - this.lastMeterAt >= 100) {
       this.lastMeterAt = now;
       const heard = now - (this.lastSoundAt || 0) < 1500;
@@ -138,11 +208,17 @@ export class VoiceBoxOffice {
     }
   }
 
+  /** Timer-based checks still run if a stalled capture stops delivering frames. */
   checkInput() {
     const warning = this.inputWarning(Date.now());
     if (warning) this.input(0, warning, true);
   }
 
+  /**
+   * Prefer hardware mute, then no frames for >4 s, then no sound for >8 s.
+   * Capture start/switch supplies the grace-period baseline before the first
+   * sample. Empty string means no warning, not proof of intelligible speech.
+   */
   inputWarning(now) {
     if (this.track?.muted) return 'Microphone muted. Check your input.';
     if (now - (this.lastFrameAt || this.captureStartedAt) > 4000) return 'Microphone paused. Restart or choose another input.';
@@ -150,11 +226,22 @@ export class VoiceBoxOffice {
     return '';
   }
 
+  /**
+   * Send protocol JSON only on an open socket. Do not require active here:
+   * stop() clears active before sending its final session.end message.
+   */
   send(message) {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(message));
   }
 
+  /**
+   * Route provider events without coupling the protocol to page elements.
+   * Audio, transcripts and tool requests arrive separately; displaying a
+   * transcript does not itself invoke a tool or run application code.
+   */
   event(message, generation) {
+    // Only readiness enables outgoing microphone frames. The browser timer is
+    // an additional guardrail alongside the provider-side session-duration cap.
     if (message.type === 'session.ready') {
       clearTimeout(this.connectTimer);
       this.starting = false;
@@ -166,12 +253,16 @@ export class VoiceBoxOffice {
     } else if (message.type === 'reply.audio' && this.active) {
       this.play(message.data);
     } else if (message.type === 'reply.done') {
+      // Provider interruption does not automatically cancel AudioBufferSources
+      // already scheduled in our browser; clear those before sending queued text.
       this.replyActive = false;
       if (message.status === 'interrupted') this.clearPlayback();
       this.flushMessages();
     } else if (message.type === 'transcript.user' || message.type === 'transcript.user.delta') {
       this.transcript('user', message.text, `user-${message.item_id}`);
     } else if (message.type === 'transcript.agent.delta') {
+      // Agent deltas append to a stable row. A final transcript replaces that
+      // row with the authoritative complete text and releases the partial cache.
       const id = `agent-${message.item_id || message.reply_id}`;
       const text = (this.agentText.get(id) || '') + message.delta;
       this.agentText.set(id, text);
@@ -181,7 +272,8 @@ export class VoiceBoxOffice {
       this.agentText.delete(id);
       this.transcript('agent', message.text, id);
     } else if (message.type === 'tool.call') {
-      // Both configured tools use hold mode; results resume the reply automatically.
+      // Both configured tools use hold mode; results resume the reply themselves.
+      // tool() awaits HTTP internally without blocking other socket events.
       this.tool(message, generation);
     } else if (message.type === 'session.error' || message.type === 'error') {
       this.stop('AssemblyAI could not continue the conversation. Check API access and credits, then reconnect.');
@@ -190,6 +282,13 @@ export class VoiceBoxOffice {
     }
   }
 
+  /**
+   * Validate the browser-side tool allowlist, then delegate execution to runTool.
+   * The backend validates again. Match the response with call_id, encode the
+   * returned object as the protocol's JSON string, and mark errors explicitly.
+   * A result arriving after this session ends is not sent to a later session;
+   * this guard does not roll back an HTTP operation that has already executed.
+   */
   async tool(message, generation) {
     let result, is_error = false;
     try {
@@ -199,6 +298,11 @@ export class VoiceBoxOffice {
     if (this.active && generation === this.generation) this.send({ type: 'tool.result', call_id: message.call_id, result: JSON.stringify(result), is_error });
   }
 
+  /**
+   * Decode a base64 reply chunk as little-endian, mono 24 kHz PCM16. Ignore empty
+   * or incomplete sample pairs, then create a float buffer; the browser resamples
+   * that 24 kHz buffer to the playback device's rate when necessary.
+   */
   play(data) {
     const raw = atob(data);
     if (!raw.length || raw.length % 2) return;
@@ -213,11 +317,15 @@ export class VoiceBoxOffice {
     source.connect(this.playback.destination);
     this.sources.add(source);
     source.onended = () => { source.disconnect(); this.sources.delete(source); };
+    // Append chunks to the end of queued speech instead of overlapping them.
+    // A short lead-in avoids scheduling in the past after a network gap; it is
+    // not a guarantee about the conversation's total end-to-end latency.
     this.playAt = Math.max(this.playAt || 0, this.playback.currentTime + 0.015);
     source.start(this.playAt);
     this.playAt += buffer.duration;
   }
 
+  /** Show typed input immediately but queue its provider message if replying. */
   text(content) {
     if (!this.active) return;
     this.transcript('user', content, `typed-${crypto.randomUUID()}`);
@@ -225,12 +333,21 @@ export class VoiceBoxOffice {
     this.flushMessages();
   }
 
+  /**
+   * Queue application-supplied context, such as a successful explicit demo
+   * confirmation. Unlike typed input, it is not rendered as a visitor utterance.
+   */
   context(content) {
     if (!this.active) return;
     this.pendingMessages.push({ role: 'system', content });
     this.flushMessages();
   }
 
+  /**
+   * Deliver queued user/system messages as one batch and request one new reply.
+   * This path is for injected conversation messages, not hold-mode tool results:
+   * those resume the existing reply automatically and must not call reply.create.
+   */
   flushMessages() {
     if (!this.active || this.replyActive || !this.pendingMessages.length) return;
     for (const message of this.pendingMessages.splice(0)) this.send({ type: 'conversation.message', ...message });
@@ -238,12 +355,20 @@ export class VoiceBoxOffice {
     this.send({ type: 'reply.create' });
   }
 
+  /** Stop both playing and scheduled speech; reset the append-only audio clock. */
   clearPlayback() {
     for (const source of this.sources) { try { source.stop(); source.disconnect(); } catch { /* Already ended. */ } }
     this.sources.clear();
     this.playAt = 0;
   }
 
+  /**
+   * Shared cleanup for an explicit end, timeout, mic test, error or navigation.
+   * Invalidate pending setup first, then signal the provider while its socket is
+   * still open. Detach callbacks before closing/stopping resources to avoid
+   * reporting our own teardown as a new disconnection. AudioContext.close is
+   * asynchronous; resources may already be closing, so its rejections are ignored.
+   */
   stop(message = 'Conversation ended. Thanks for dropping by.') {
     ++this.generation;
     this.active = false;

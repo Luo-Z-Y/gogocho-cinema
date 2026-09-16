@@ -1,3 +1,8 @@
+/*
+ * Presentation only: screening/pricing/confirmation rules stay in the backend.
+ * Sections follow the page: shared tokens, programme, voice panel, dialogue,
+ * accessibility helpers and responsive overrides. No external fonts or artwork.
+ */
 :root {
   color-scheme: dark;
   --bg: #131716;
@@ -9,6 +14,8 @@
   font-family: Arial, Helvetica, sans-serif;
   font-size: 16px;
 }
+/* Include borders/padding in control dimensions. Native hidden state must win
+   over component display:flex/grid rules, especially the finish field and chat. */
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--paper); }
@@ -16,6 +23,8 @@ button, input, select { font: inherit; }
 button, a, select, input { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; color: inherit; }
 button:disabled { cursor: wait; opacity: .55; }
+/* Preserve visible keyboard focus without adding an outline to every mouse
+   click. The composite finish field supplies its own group-level outline. */
 button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--lime);
   outline-offset: 5px;
@@ -23,6 +32,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visib
 a { color: inherit; }
 h1, h2, h3, p { margin: 0; }
 p { line-height: 1.6; }
+/* Shared horizontal rhythm and the original typographic wordmark. The fictional
+   notice remains visible rather than being hidden inside a details disclosure. */
 .masthead, main, footer { max-width: 1400px; margin: auto; padding: 0 5vw; }
 .masthead { height: 100px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .brand { font-weight: 900; font-size: 34px; letter-spacing: -2px; text-decoration: none; display: flex; flex-direction: column; line-height: .9; }
@@ -31,13 +42,20 @@ p { line-height: 1.6; }
 .opening { margin: 52px 0 48px; }
 h1 { font-weight: 400; font-size: clamp(44px, 5.5vw, 72px); line-height: 1.1; letter-spacing: -3px; }
 h1 em { font-family: Georgia, serif; color: var(--lime); }
+/* The programme may shrink below its content's natural width; minmax(0, 1fr)
+   prevents long titles/controls from forcing horizontal page overflow. */
 .cinema-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 56px; align-items: start; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
 .section-heading h2 { font-size: 20px; font-weight: 400; }
 .muted { color: var(--muted); font-size: 12px; }
+/* Wide screens keep the filter controls on one row. min-width:0 lets native
+   inputs shrink within grid cells; breakpoint overrides below stack the row. */
 .filters { display: grid; grid-template-columns: 1.25fr 1fr 1.1fr minmax(140px, 1fr) auto; gap: 10px; align-items: end; }
 .filters label, .finish-filter { display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
 input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--paper); font-size: 13px; }
+/* Any time and the editable cutoff share one 42px outer frame, so changing mode
+   cannot change row height. Child focus is represented by :focus-within; removing
+   a child's outline here does not remove the visible group focus indicator. */
 .finish-control { display: flex; align-items: center; height: 42px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--paper); }
 .finish-control:focus-within { outline: 2px solid var(--lime); outline-offset: 5px; }
 .finish-control button { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 10px; border: 0; background: transparent; font-size: 13px; }
@@ -45,6 +63,9 @@ input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; bord
 #finish-any { width: 100%; gap: 8px; }
 #finish-any svg { flex-shrink: 0; color: var(--muted); }
 #finish-any:hover { color: var(--lime); }
+/* Let the time input consume the space left by the fixed-width clear button.
+   Hide WebKit's extra picker icon to avoid a second affordance in the compact
+   field; the native time control still handles editing and validation. */
 .finish-control input { flex: 1; width: 0; height: 40px; min-height: 0; padding: 0 0 0 8px; border: 0; background: transparent; font-variant-numeric: tabular-nums; }
 .finish-control input::-webkit-calendar-picker-indicator { display: none; }
 #finish-clear { flex: 0 0 32px; justify-content: center; padding: 0; color: var(--muted); }
@@ -54,6 +75,8 @@ input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; bord
 .programme-note { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; color: var(--muted); font-size: 12px; }
 .text-button { background: none; border: 0; padding: 8px 0; color: var(--muted); font-size: 12px; }
 .text-button:hover { color: var(--paper); }
+/* Original posters are text and catalogue-provided --film/--ink colours, not
+   imported images. Keep both columns shrinkable and use one column on phones. */
 .film-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 24px; }
 .film { min-width: 0; }
 .poster { height: 295px; padding: 26px; background: var(--film); color: var(--ink); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
@@ -66,18 +89,27 @@ input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; bord
 .screening span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
 .screening:hover { background: var(--paper); color: var(--bg); }
 .screening:hover span { color: #394239; }
+/* Native details/summary keeps optional copy keyboard-operable. Summary focus
+   is included in the shared focus rule instead of using a custom click target. */
 .film-details { font-size: 13px; color: var(--muted); line-height: 1.6; }
 .film-details summary { width: fit-content; cursor: pointer; padding: 8px 0; font-size: 12px; }
 .film-details p { margin-top: 10px; }
 .film-details p:first-of-type { color: var(--paper); }
+/* Keep voice actions in reach on desktop. Mobile layout removes sticky positioning
+   and places the panel before the programme, without changing DOM reading order. */
 .box-office { position: sticky; top: 28px; padding: 26px; border: 1px solid var(--line); border-radius: 4px; }
 .box-office h2 { font-family: Georgia, serif; font-size: 28px; font-weight: 400; letter-spacing: -.7px; }
+/* Fixed bar proportions provide the shape; --mic-level, written by app.js from
+   measured input, controls their scale. There is no autonomous speaking animation
+   that could misleadingly suggest the microphone is hearing sound. */
 .voice-art { display: flex; align-items: center; justify-content: center; gap: 5px; height: 100px; }
 .voice-art span { width: 4px; height: 16px; border-radius: 3px; background: var(--lime); }
 .voice-art span:nth-child(2n) { height: 28px; }
 .voice-art span:nth-child(3n) { height: 46px; }
 .voice-art span:nth-child(4n) { height: 36px; }
 .voice-art span { transform: scaleY(calc(.18 + var(--mic-level, 0) * .82)); transition: transform .1s; }
+/* Diagnostics stay inside a compact native disclosure until opened by the user
+   or a warning. The waveform is visual only; these status labels carry meaning. */
 .mic-controls { margin-top: 14px; font-size: 12px; color: var(--muted); }
 .mic-controls summary { cursor: pointer; width: fit-content; padding: 6px 0; }
 .mic-controls select { margin-top: 8px; }
@@ -86,16 +118,22 @@ input, select { width: 100%; min-width: 0; min-height: 42px; padding: 10px; bord
 .primary:hover { background: #f0f795; }
 .voice-status { margin-top: 16px; color: var(--muted); font-size: 12px; }
 .privacy { margin-top: 8px; color: var(--muted); font-size: 11px; }
+/* Bound the visible transcript height while JavaScript separately caps retained
+   message rows. The chat form is hidden when no conversation is active. */
 .transcript { max-height: 260px; overflow-y: auto; scrollbar-width: thin; }
 .utterance { margin-top: 16px; font-size: 13px; }
 .utterance strong { display: block; color: var(--muted); font-size: 11px; margin-bottom: 3px; }
 .chat { display: flex; gap: 6px; margin-top: 16px; }
 .chat button { background: var(--lime); color: #202719; border: 0; padding: 10px; }
+/* Empty/error results span the full film grid. Transient alerts sit above the
+   normal page; the native modal dialogue uses the browser's separate top layer. */
 .empty { grid-column: 1 / -1; padding: 50px 20px; border: 1px solid var(--line); text-align: center; }
 .empty h3 { font-size: 20px; font-weight: 400; margin-bottom: 8px; }
 .empty p { font-size: 14px; color: var(--muted); }
 .notice { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); width: min(90vw, 600px); background: var(--paper); color: #202719; padding: 16px 24px; z-index: 30; border-radius: 4px; font-size: 14px; line-height: 1.5; }
 footer { margin-top: 56px; padding-top: 24px; padding-bottom: 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+/* The browser handles modality/focus through showModal(); CSS only supplies
+   appearance and viewport bounds. Long reviews remain scrollable on small screens. */
 dialog { border: 1px solid var(--line); background: var(--panel); color: var(--paper); padding: 28px; width: min(500px, 92vw); max-height: 90vh; border-radius: 5px; }
 dialog::backdrop { background: #050b09cc; backdrop-filter: blur(4px); }
 .dialog-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
@@ -108,9 +146,14 @@ dialog h3 { font-size: 20px; margin-bottom: 16px; }
 #booking-form .primary { grid-column: 1 / -1; justify-content: center; }
 #booking-message { color: var(--lime); margin: 20px 0; font-size: 14px; }
 #booking-message:empty { display: none; }
+/* Keep labels available to assistive technology without taking visual space.
+   The skip link becomes visible when keyboard-focused; never use display:none
+   for either helper, which would also remove it from accessibility navigation. */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .skip { position: absolute; top: -80px; background: var(--lime); color: #111; padding: 12px; z-index: 100; }
 .skip:focus { top: 10px; }
+/* Tablet/compact desktop: keep the two main columns, but wrap filters into two
+   columns and let the submit button span the row. */
 @media (max-width: 1100px) {
   .cinema-layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 30px; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -119,6 +162,8 @@ dialog h3 { font-size: 20px; margin-bottom: 16px; }
   .poster-title { font-size: 34px; }
   .box-office { padding: 22px; }
 }
+/* Narrow layout: voice moves visually above the programme, and its status/chat
+   elements span both internal panel columns. The underlying DOM order is stable. */
 @media (max-width: 760px) {
   .masthead { height: 84px; }
   .brand { font-size: 30px; }
@@ -139,15 +184,19 @@ dialog h3 { font-size: 20px; margin-bottom: 16px; }
   .film-meta { padding-top: 8px; }
   footer { margin-top: 36px; }
 }
+/* Single-column posters protect readable titles on small phones. */
 @media (max-width: 520px) {
   .film-grid { grid-template-columns: 1fr; }
   .poster { height: 290px; padding: 26px; }
   .poster-title { font-size: 46px; }
 }
+/* Extra-small devices need a little more room for the heading and panel content. */
 @media (max-width: 380px) {
   h1 { font-size: 42px; }
   .box-office { padding: 18px; }
 }
+/* Respect reduced motion for keyframe animations and smooth scrolling. Meter
+   values still update; this rule does not remove the bar's short CSS transition. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
 }

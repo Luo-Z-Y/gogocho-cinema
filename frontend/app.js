@@ -1,22 +1,54 @@
+/**
+ * Browser presentation and coordination layer.
+ *
+ * This module owns the DOM, form submissions and demo review dialogue. It never
+ * calculates authoritative screenings/prices or accesses the provider key.
+ * VoiceBoxOffice owns audio/protocol details and calls back here when a tool
+ * should use the same HTTP API as a button-driven interaction.
+ */
 import { VoiceBoxOffice } from './voice/client.js';
+// All elements exist by the time this deferred ES module runs.
 const $ = s => document.querySelector(s);
 const form = $('#filters');
 const booking = $('#booking');
+// data is the initial programme; quote is the displayed server-issued review.
+// Version counters suppress superseded direct search/review responses. They are
+// UI guards, not transaction locks: the backend still validates the current quote.
 let data, quote, searchVersion = 0, quoteVersion = 0, voice;
+// Convert integer cents only for display. Anchor date-only labels at Singapore
+// noon so neither the host timezone nor UTC parsing shifts the displayed day.
 const currency = n => new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD' }).format(n / 100);
 const dateLabel = date => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Singapore', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${date}T12:00:00+08:00`));
+// Catalogue text and identifiers belong in HTML as data, not executable markup.
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+/** Show a transient, text-only alert; replace the previous dismissal timer. */
 function notice(message) { $('#notice').textContent = message; $('#notice').hidden = false; clearTimeout(notice.timer); notice.timer = setTimeout(() => $('#notice').hidden = true, 6500); }
+/**
+ * Send a same-origin JSON request. Fetch carries the HttpOnly session cookie
+ * automatically; the page neither reads nor constructs that cookie. Turn an
+ * HTTP error into an exception so UI and voice callers share the error path.
+ */
 async function post(path, body) {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const value = await r.json();
   if (!r.ok) throw new Error(value.error || 'Please try again.');
   return value;
 }
+/**
+ * Translate native form values into tool arguments. Blank choices mean no
+ * restriction; a disabled finish-time input is omitted by FormData. Runtime
+ * must become a number rather than the string returned by a select element.
+ */
 function filters() {
   const values = Object.fromEntries(new FormData(form));
   return Object.fromEntries(Object.entries(values).filter(([,v]) => v !== '').map(([k,v]) => [k, k === 'maxRuntime' ? Number(v) : v]));
 }
+/**
+ * Keep the compact Any time / time-input states consistent for clicks, reset
+ * and voice results. Disabled prevents an inactive cutoff entering a request;
+ * required prevents submitting an empty cutoff while editing. The visible
+ * label follows the active control, and both states use the same CSS height.
+ */
 function syncFinishTime(specific = Boolean(form.elements.endBefore.value)) {
   const input = form.elements.endBefore;
   $('#finish-any').hidden = specific;
@@ -26,6 +58,12 @@ function syncFinishTime(specific = Boolean(form.elements.endBefore.value)) {
   input.required = specific;
   if (!specific) input.value = '';
 }
+/**
+ * Render server-returned screenings, including their already calculated times.
+ * Poster colours come from the checked original catalogue; copy/IDs are escaped.
+ * Native details/summary keeps optional descriptions keyboard-operable without
+ * another client-side component. An empty array gets an explicit recovery state.
+ */
 function renderFilms(results) {
   $('#film-count').textContent = `${results.length} screening${results.length === 1 ? '' : 's'}`;
   $('#films').innerHTML = results.length ? results.map(s => {
@@ -33,11 +71,17 @@ function renderFilms(results) {
     return `<article class="film"><div class="poster" style="--film:${f.colour};--ink:${f.ink}"><span class="poster-index" aria-hidden="true">${f.mark}</span><h3 class="poster-title">${escape(f.title)}</h3></div><div class="film-info"><p class="film-meta">${escape(f.genre)} · ${f.runtime} min</p><button class="screening" data-screening="${escape(s.id)}" aria-label="Select ${escape(f.title)} at ${s.startTime}">${s.startTime}<span>Ends ${s.endTime}</span></button></div><details class="film-details"><summary aria-label="Details about ${escape(f.title)}">Details</summary><p>${escape(f.description)}</p><p>${escape(f.language)} · Screen ${s.screen}</p><p>${escape(f.audience)}. ${escape(f.contentNotes)}</p></details></article>`;
   }).join('') : '<div class="empty"><h3>No matching films</h3><p>Try another day or change a filter.</p></div>';
 }
+/** Only the latest direct form search may replace the displayed programme. */
 async function search() {
   const version = ++searchVersion;
   try { const result = await post('/api/tool', { name: 'search_screenings', arguments: filters() }); if (version === searchVersion) renderFilms(result.results); }
   catch (e) { if (version === searchVersion) notice(e.message); }
 }
+/**
+ * Display an awaiting-confirmation review exactly as returned by the backend.
+ * showModal provides native modal/focus behaviour. Rendering a review must not
+ * submit it: confirmation remains a separate form action below.
+ */
 function showQuote(value) {
   quote = value;
   $('#booking-heading').textContent = 'Review booking';
@@ -49,19 +93,32 @@ function showQuote(value) {
   $('#booking-message').textContent = '';
   if (!booking.open) booking.showModal();
 }
+/**
+ * Ask for a fresh review and disable confirmation while its details are stale.
+ * A quantity change uses this same path instead of recalculating a total locally.
+ */
 async function prepare(screeningId, quantity) {
   const version = ++quoteVersion;
   $('#confirm').disabled = true;
   try { const result = await post('/api/tool', { name: 'prepare_booking', arguments: { screeningId, quantity } }); if (version === quoteVersion) showQuote(result); }
   catch(e) { if (version === quoteVersion) { $('#booking-message').textContent = e.message; notice(e.message); } }
 }
+// Delegate screening clicks from the stable grid container: renderFilms replaces
+// its children, so handlers attached to individual film buttons would be lost.
 $('#films').addEventListener('click', e => { const button = e.target.closest('[data-screening]'); if (button) prepare(button.dataset.screening, 2); });
+// Prevent full-page navigation, which would discard the conversation. These
+// finish-control actions explicitly restore keyboard focus after changing state.
 form.addEventListener('submit', e => { e.preventDefault(); search(); });
 $('#finish-any').onclick = () => { syncFinishTime(true); form.elements.endBefore.focus(); };
 $('#finish-clear').onclick = () => { syncFinishTime(false); $('#finish-any').focus(); };
 $('#reset').onclick = () => { form.reset(); syncFinishTime(); form.elements.date.value = data.today; search(); };
+// Closing the dialogue is not confirmation (or a backend cancellation). The
+// stored review is still governed by its expiry and the next prepared selection.
 $('#close-booking').onclick = () => booking.close();
 $('#quantity').onchange = () => { if (quote) prepare(quote.screening.id, Number($('#quantity').value)); };
+// Only this explicit page action calls /api/confirm. Disable both controls while
+// it runs to avoid accidental repeat submissions or a quantity edit in flight.
+// The server still checks the cookie-scoped review ID and expiry on every retry.
 $('#booking-form').onsubmit = async e => {
   e.preventDefault(); if (!quote) return;
   $('#confirm').disabled = true; $('#quantity').disabled = true;
@@ -70,10 +127,18 @@ $('#booking-form').onsubmit = async e => {
     $('#booking-heading').textContent = 'Demo confirmed';
     $('#booking-form').hidden = true;
     $('#booking-message').textContent = result.reference;
+    // Let an active agent acknowledge a real application result only after the
+    // HTTP confirmation succeeds. This adds context; it is not another tool call.
     voice?.context(`The visitor explicitly pressed Confirm demo booking. Result: ${JSON.stringify(result)}`);
   } catch(e) { $('#booking-message').textContent = e.message; $('#quantity').disabled = false; $('#confirm').disabled = false; }
 };
 
+/**
+ * Bridge voice tool events to the same validated backend used by manual controls.
+ * Reflect the tool's actual filter arguments, not a mixture with old form values.
+ * Advance the UI counters so older direct requests cannot overwrite this result.
+ * Return the complete result to the voice client for its matching tool.result.
+ */
 async function runTool(name, args) {
   const result = await post('/api/tool', { name, arguments: args });
   if (name === 'search_screenings') {
@@ -85,6 +150,11 @@ async function runTool(name, args) {
   } else if (name === 'prepare_booking') { ++quoteVersion; showQuote(result); }
   return result;
 }
+/**
+ * Update a stable message row as partial transcripts arrive. textContent keeps
+ * provider text inert. Retain at most 100 DOM messages and scroll to the latest;
+ * this is an in-memory display, not saved chat history or an audio recording.
+ */
 function transcript(role, text, id) {
   let line = [...$('#transcript').children].find(el => el.dataset.id === id);
   if (!line) { line = document.createElement('p'); line.className = 'utterance'; line.dataset.id = id; const label = document.createElement('strong'); label.textContent = role === 'user' ? 'You' : 'Box office'; line.append(label, document.createElement('span')); $('#transcript').append(line); }
@@ -92,11 +162,18 @@ function transcript(role, text, id) {
   while ($('#transcript').children.length > 100) $('#transcript').firstChild.remove();
   $('#transcript').scrollTop = $('#transcript').scrollHeight;
 }
+/**
+ * Bootstrap the dated programme before enabling microphone/session controls.
+ * All DOM-specific voice behaviour is injected as callbacks, keeping the voice
+ * class reusable and testable without importing this page module.
+ */
 async function init() {
   try {
     const r = await fetch('/api/programme'); if (!r.ok) throw new Error('The programme could not be loaded.'); data = await r.json();
     $('#date').innerHTML = data.dates.map((d,i) => `<option value="${d}">${i === 0 ? 'Today · ' : i === 1 ? 'Tomorrow · ' : ''}${dateLabel(d)}</option>`).join('');
     await search();
+    // State callbacks keep button availability aligned with capture/connection
+    // initialisation; rapid clicks must not start overlapping setup attempts.
     voice = new VoiceBoxOffice({ post, runTool, transcript, state: (active, message) => {
       $('.box-office').classList.toggle('live', active);
       $('#voice-start').textContent = active ? 'End conversation' : 'Start talking ↗';
@@ -106,14 +183,20 @@ async function init() {
       $('#voice-status').textContent = message;
       $('#chat').hidden = !active;
     }, input: (level, message, warning) => {
+      // The waveform is driven by measured input, not a decorative animation.
+      // Open the otherwise compact microphone disclosure when action is needed.
       $('.voice-art').style.setProperty('--mic-level', String(level));
       if ($('#mic-status').textContent !== message) $('#mic-status').textContent = message;
       if (warning) $('#mic-controls').open = true;
     }, devices: (inputs, selected) => {
+      // Show the device actually in use when listed; otherwise select the System
+      // default option. Updating this dropdown alone does not switch capture.
       const current = selected || $('#mic-input').value;
       $('#mic-input').replaceChildren(new Option('System default', ''), ...inputs.map(d => new Option(d.label, d.id)));
       $('#mic-input').value = [...$('#mic-input').options].some(o => o.value === current) ? current : '';
     }});
+    // Discovery is best-effort before permission. Test mic shares capture code
+    // with a conversation but stops before obtaining any provider token.
     await voice.listInputs();
     $('#mic-input').onchange = () => voice.changeInput($('#mic-input').value);
     $('#mic-test').onclick = () => voice.start($('#mic-input').value, true);
@@ -128,5 +211,7 @@ async function init() {
     $('#chat').onsubmit = e => { e.preventDefault(); const text = $('#message').value.trim(); if (text) { voice.text(text); $('#message').value = ''; } };
   } catch(e) { $('#films').innerHTML = '<div class="empty"><h3>The programme is unavailable.</h3><p>Refresh the page to try again.</p></div>'; $('#voice-status').textContent = 'Box office unavailable.'; notice(e.message); }
 }
+// Navigation must release capture and close the voice socket, not leave the
+// microphone running after the visitor leaves this page.
 window.addEventListener('pagehide', () => voice?.stop());
 init();

@@ -256,3 +256,42 @@ Verified the old listening process belonged to this project, stopped it and rest
 Replaced the README file map and architecture guide with the frontend/backend tree, runtime responsibilities, dependency/request diagram, filesystem-to-URL mapping, root `.env` guidance and updated change-to-file/test paths. Updated the linked Obsidian plan/progress notes. Historical entries retain the paths and test counts that were correct at those checkpoints; the current source layout is described in [README.md](../README.md#file-organisation).
 
 Version control decision: commit the verified reorganisation and documentation locally. Do not push because no remote is configured. Vault notes remain outside the software repository. Next: complete the full live spoken booking rehearsal; this simulated browser journey does not satisfy that milestone.
+
+## 16 September 2026 — Extensive code comments and data/configuration guide
+
+### Request and scope
+
+The user requested extensive comments throughout all code. Against baseline `ca45154`, starting at 17:32 Singapore time (UTC+08:00), documented the existing implementation without changing executable logic, assets' non-comment markup/styles, configuration values, catalogue content or provider instructions. The frontend/backend architecture and all fictional/demo boundaries remain unchanged.
+
+### Coverage and explanations added
+
+| Area | Commentary added |
+| --- | --- |
+| `backend/server.js` | Module responsibilities, injectable test dependencies, static allowlist, response headers, origin/cookie boundaries, fixed session lifetime, request-body checks, tool dispatch, explicit confirmation, token-attempt accounting, provider error redaction and loopback entry point |
+| `backend/cinema/service.js` | Singapore date arithmetic, stable screening IDs, integer-cent prices, inclusive runtime versus strict finish-before filtering, invalid versus empty queries, random expiring reviews and stable confirmation retries; confirmation returns a copy rather than persisting real bookings |
+| `backend/voice/agent.js` | Non-secret session configuration, date snapshot, catalogue grounding, distinction between schema/instruction and implementation, hold-mode results and the deliberate absence of a confirmation tool |
+| `frontend/app.js` | UI/API ownership, escaping/display formatting, form argument conversion, compact finish-control states/focus, response-version guards, review/confirmation actions, voice callbacks, transcript retention and navigation cleanup |
+| `frontend/voice/client.js` | Capture/session lifecycle, generation guards, permissions/Bluetooth resume, local-only microphone test, device handover, RMS diagnostics, muted/stalled/silent distinctions, socket queue limits, transcript/tool events, PCM playback, message batching and resource cleanup |
+| `frontend/voice/pcm-worklet.js` | Audio-thread boundary, 24 kHz/20 ms/480-sample/960-byte framing, fractional interpolation across blocks, signed little-endian PCM, transferable buffers, retained boundary samples and resampler limitations |
+| HTML, CSS and SVG | DOM/form contracts, visible fictional/privacy disclosures, semantic controls, accessibility/status regions, modal confirmation, fixed-height filters, responsive layout, input-driven waveform and original icon construction |
+| All four test files | Fixture isolation, fixed-clock boundaries, explicit cookie/origin handling, mocked provider/sockets, late-result and cleanup tests, PCM arithmetic and what simulated checks do not establish |
+| `scripts/check.js` | Syntax-only execution, path resolution, subprocess failures, catalogue fields/IDs, timing/screen assumptions and hexadecimal colour validation |
+| `.env.example`, `.gitignore` | Private root configuration, optional voice access, loopback port, template exception ordering, generated files and log/evidence hygiene |
+
+Comments describe actual behaviour and limitations rather than promising stronger guarantees: the server cannot recover an omitted spoken preference, generation guards do not undo an already completed HTTP operation, RMS is not speech recognition, the worklet uses simple linear interpolation, and the reduced-motion CSS rule does not remove the meter's short transition.
+
+Added the ongoing commenting convention to `AGENTS.md`. Added [Code comments and JSON data](../README.md#code-comments-and-json-data) to the README, including a reading order, all catalogue fields, package settings and local configuration. Strict JSON files were left untouched rather than inserting invalid comments or invented metadata fields. Updated the linked Obsidian plan/progress notes; the demo checklist is unchanged because no interaction or acceptance criterion changed.
+
+### Fresh automated verification — no behaviour change
+
+- `npm test`: **18 passed, 0 failed, 0 skipped**. No assertions or fixtures were removed or weakened.
+- `npm run check`: **passed** — JavaScript syntax and catalogue checks.
+- Parsed all **11 JavaScript files** before/after with Node's bundled Acorn 8.16.0 and compared complete syntax trees excluding source offsets. All executable trees match the baseline, including the agent prompt/schema strings and test bodies. No parser dependency was added to the project.
+- Removed comments/blank lines for comparison of HTML/SVG/CSS: both markup files and every stylesheet rule match the baseline. This is source equivalence, not a fresh visual browser audit.
+- Compared active `.env.example` and `.gitignore` entries: values/patterns and their ordering are unchanged. `backend/cinema/films.json` and `package.json` are byte-for-byte unchanged and still parse as strict JSON.
+- `git diff --check` passed. The temporary reproducible equivalence check is `/private/tmp/gogocho-comments-check.cjs`; it records baseline `ca45154` and remains outside Git.
+- Documentation checks passed: README maps all 22 tracked files; nine local Markdown/heading links and both Obsidian links resolve; six project documents have no trailing whitespace. `.env` remains ignored.
+
+No new browser rehearsal, microphone capture or live-provider call was performed for this commenting pass. Earlier simulated/browser/live evidence remains attributed to its original checkpoints. The existing local server was not restarted, and no private `.env` contents were read or modified. Full live spoken booking, remaining credits, cross-browser checks, deployment and submission are still outstanding.
+
+Version control decision: commit the verified code comments, commenting convention and aligned documentation locally. No push because no remote is configured. Obsidian notes remain outside the software repository. Next: complete and record the full spoken booking rehearsal; comments do not advance that verification milestone.

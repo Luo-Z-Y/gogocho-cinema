@@ -1,8 +1,15 @@
+# Private environment files and local variants must not enter source control.
 .env
 .env.*
+# Keep the credential-free template; this exception must follow the broad rule.
 !.env.example
+
+# Dependencies/local OS metadata are not application source.
 node_modules/
 .DS_Store
+
+# Generated test evidence and logs may be large or contain session information.
+# Review files before committing even when they do not match an ignored pattern.
 coverage/
 artifacts/
 *.log

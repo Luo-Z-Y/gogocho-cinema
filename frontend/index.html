@@ -1,13 +1,22 @@
 <!doctype html>
+<!--
+  Semantic shell for the fictional cinema. app.js fills the programme/review
+  regions and supplies the voice callbacks; no provider key or inline script
+  belongs in this document. IDs and form names are contracts with app.js.
+-->
 <html lang="en-GB">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Find your next story at Gogocho, a fictional independent cinema with a conversational box office.">
   <title>Gogocho Cinema — Find your kind of film</title>
+  <!-- These URLs are explicitly allowlisted by backend/server.js. The module
+       script is deferred by the browser, so its DOM queries run after parsing. -->
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
+  <!-- Keep a keyboard shortcut past navigation and a visible fictional notice;
+       the fictional/demo boundary must not exist only inside code comments. -->
   <a class="skip" href="#programme">Skip to programme</a>
   <header class="masthead"><a class="brand" href="/" aria-label="Gogocho Cinema home">gogocho<span>CINEMA</span></a><span class="demo-label">Fictional cinema</span></header>
   <main>
@@ -15,35 +24,60 @@
     <div class="cinema-layout">
       <section id="programme" aria-labelledby="programme-heading">
         <div class="section-heading"><h2 id="programme-heading">Programme</h2><span class="muted">Singapore time</span></div>
+        <!-- Native form controls remain usable without voice. Form names match
+             search_screenings arguments; the backend validates them again. -->
         <form id="filters" class="filters">
+          <!-- Date options come from the server's rolling Singapore programme.
+               Empty preferences mean unrestricted; strict runtime labels use
+               119/99 because the backend's maximum-runtime bound is inclusive. -->
           <label>Day<select name="date" id="date"></select></label>
           <label>Mood<select name="mood"><option value="">Any mood</option><option value="light">Light</option><option value="gentle">Gentle</option><option value="wonder">Wonder</option><option value="tense">Tense</option></select></label>
           <label>Length<select name="maxRuntime"><option value="">Any length</option><option value="119">Under two hours</option><option value="99">Under 100 minutes</option></select></label>
+          <!-- One fixed-height field has two states. The inactive time input is
+               hidden AND disabled so FormData omits it. app.js updates the label
+               target, required state and keyboard focus when the visitor switches. -->
           <div class="finish-filter"><label id="finish-label" for="finish-any">Finish before</label><div class="finish-control"><button type="button" id="finish-any" aria-labelledby="finish-label finish-value"><span id="finish-value">Any time</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg></button><input id="finish-time" type="time" name="endBefore" aria-label="Finish before, Singapore time" hidden disabled><button type="button" id="finish-clear" aria-label="Any time — remove finish-time limit" title="Any time" hidden><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div></div>
           <button type="submit" class="filter-button">Find films</button>
         </form>
         <div class="programme-note"><span id="film-count"></span><button type="button" id="reset" class="text-button">Reset filters</button></div>
+        <!-- Replaceable cards live inside a stable grid for delegated clicks.
+             Polite live updates announce changed results without stealing focus. -->
         <div id="films" class="film-grid" aria-live="polite"><p>Opening the programme…</p></div>
       </section>
+      <!-- The voice panel is complementary to the programme, not a requirement
+           for filtering or demo booking. Controls wait for application setup. -->
       <aside class="box-office" aria-labelledby="box-heading">
         <h2 id="box-heading">Box office</h2>
+        <!-- These bars are driven by measured RMS input through a CSS variable.
+             They are decorative for accessibility; text status conveys warnings. -->
         <div class="voice-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
         <button type="button" id="voice-start" class="primary" disabled>Start talking <span aria-hidden="true">↗</span></button>
         <p id="voice-status" class="voice-status" role="status">Checking availability…</p>
         <p class="privacy">Voice audio is sent to AssemblyAI.</p>
+        <!-- Native disclosure keeps diagnostics compact. Test mic is local-only;
+             starting a conversation instead shares microphone audio with AssemblyAI. -->
         <details class="mic-controls" id="mic-controls"><summary>Microphone</summary><label for="mic-input" class="sr-only">Microphone input</label><select id="mic-input" disabled><option value="">System default</option></select><button type="button" id="mic-test" class="text-button" disabled>Test mic</button><p id="mic-status" role="status"></p></details>
+        <!-- Transcript text is inserted with textContent, not interpreted as HTML.
+             Typed input joins the active voice session rather than a second agent. -->
         <div id="transcript" class="transcript" role="log" aria-label="Voice conversation" aria-live="polite"></div>
         <form id="chat" class="chat" hidden><label for="message" class="sr-only">Send a message during your voice session</label><input id="message" placeholder="Or type a message…" maxlength="500" autocomplete="off"><button aria-label="Send message">↗</button></form>
       </aside>
     </div>
   </main>
   <footer>Demo bookings only · No payment</footer>
+  <!-- showModal() supplies the native modal/focus and Escape behaviour. Voice
+       may open this review, but only the submit action calls /api/confirm. Keep
+       the no-payment/no-reservation notice visible beside the confirmation. -->
   <dialog id="booking" aria-labelledby="booking-heading">
     <div class="dialog-top"><h2 id="booking-heading">Review booking</h2><button type="button" id="close-booking" class="close" aria-label="Close booking">×</button></div>
     <div id="booking-details"></div>
+    <!-- This range mirrors the server's quantity validation, not a replacement
+         for it. Changing quantity requests a fresh review and total from the API. -->
     <form id="booking-form"><label for="quantity">Tickets</label><select id="quantity"><option value="1">1 ticket</option><option value="2" selected>2 tickets</option><option value="3">3 tickets</option><option value="4">4 tickets</option><option value="5">5 tickets</option><option value="6">6 tickets</option></select><button id="confirm" class="primary" type="submit">Confirm demo booking</button></form>
     <p id="booking-message" role="status"></p><p class="muted">Demo only · No payment or seats reserved</p>
   </dialog>
+  <!-- Transient failures use an alert, while connection/booking state above uses
+       status regions. JavaScript writes plain text and dismisses this notice. -->
   <div id="notice" class="notice" role="alert" hidden></div>
 </body>
 </html>

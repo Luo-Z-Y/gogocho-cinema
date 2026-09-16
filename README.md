@@ -153,6 +153,39 @@ The backend serves **only explicitly allowlisted frontend assets**. Folder names
 
 A new tool spans the architecture: define its schema in `backend/voice/agent.js`, implement and validate the operation in backend code, route it in `backend/server.js`, allow it in `frontend/voice/client.js`, and add any result rendering in `frontend/app.js`. Add matching tests; a schema alone does not execute a function or enforce its rules. Keep authoritative time, price and booking validation in the backend rather than duplicating it in the UI or prompt.
 
+## Code comments and JSON data
+
+The frontend, backend, tests and validation script include extensive module/function comments. They explain responsibilities, inputs and side effects, validation boundaries, request flow, asynchronous cleanup, tool protocols and audio arithmetic. HTML, CSS and the SVG icon explain their structural, accessibility and visual roles. `.env.example` and `.gitignore` explain their configuration/security choices. Keep these explanations aligned with changes rather than treating them as a second implementation; `AGENTS.md` records this convention for future work.
+
+A useful reading order is `backend/cinema/service.js` (rules), `backend/server.js` (HTTP/state), `backend/voice/agent.js` (tool descriptions), `frontend/app.js` (UI integration), then `frontend/voice/client.js` and `pcm-worklet.js` (conversation/audio lifecycle). Tests describe the guarantees they check and which browser/provider behaviours are simulated.
+
+**JSON does not support comments.** Keep `backend/cinema/films.json` and `package.json` valid, comment-free JSON; their fields are explained here instead of adding `_comment` fields or changing the data format.
+
+### Catalogue fields
+
+Each object in `backend/cinema/films.json` describes one original fictional film and its daily slot. The cinema service expands that slot across future dates; it is not a real listing or seat inventory.
+
+| Fields | Meaning |
+| --- | --- |
+| `id` | Stable film identifier used in tool arguments; a screening ID combines its date with this ID. Keep IDs unique. |
+| `title`, `tagline` | Original display/conversation copy. The current film cards show the title, not a second tagline. |
+| `genre`, `mood` | Human-readable genre and filter category. Supported moods are `light`, `gentle`, `wonder` and `tense`. |
+| `runtime` | Whole minutes; the catalogue check requires a positive value below 180. End times are calculated in code. |
+| `time`, `screen` | Daily Singapore `HH:MM` start and screen 1 or 2. Cinema tests check that slots on a screen do not overlap. |
+| `language` | Original language description, not external film metadata. |
+| `description`, `conversation` | Short visitor-facing synopsis and additional spoiler-free guidance for the agent. |
+| `audience`, `contentNotes` | Editorial suitability/content guidance, not official age ratings. |
+| `colour`, `ink`, `mark` | Hexadecimal poster background/text colours and a visual catalogue mark. `mark` is not a booking identifier. |
+
+`npm run check` validates required copy, unique IDs, runtimes, times, screens and colours. The server separately validates user/tool requests; catalogue checks do not establish live-agent accuracy or replace runtime validation. Simulated ticket prices live in the cinema service, not in this file.
+
+### Package and local configuration
+
+- `package.json` uses `type: "module"` for native ES modules and `engines.node` for the minimum Node version. `name`, `version` and `description` are package metadata.
+- `private: true` prevents npm package publication; it is not website authentication or a restriction on Git publishing.
+- `scripts.start` and `scripts.dev` run the backend with the optional root `.env`; dev adds Node's watch mode. `scripts.test` runs the Node tests and `scripts.check` runs syntax/catalogue checks.
+- `.env.example` documents the optional server-side `ASSEMBLYAI_API_KEY` and loopback server `PORT`. Its key stays blank; real credentials belong only in the ignored local `.env`.
+
 ## Scope and verification
 
 This is a local prototype. It binds to `127.0.0.1`, checks mutation origins, and keeps reviews in memory per browser cookie. Restarting the server clears reviews. No database, authentication, real seat inventory or payment system is included. Different tabs in the same browser share the latest review; an older review is rejected at confirmation.
