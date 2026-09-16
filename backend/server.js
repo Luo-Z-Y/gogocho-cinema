@@ -2,10 +2,18 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { programme, searchScreenings, prepareBooking, confirmBooking } from './lib/cinema.js';
-import { agentConfig } from './lib/agent.js';
+import { programme, searchScreenings, prepareBooking, confirmBooking } from './cinema/service.js';
+import { agentConfig } from './voice/agent.js';
 
-const files = { '/': ['index.html', 'text/html'], '/style.css': ['style.css', 'text/css'], '/app.js': ['app.js', 'text/javascript'], '/voice.js': ['voice.js', 'text/javascript'], '/pcm-worklet.js': ['pcm-worklet.js', 'text/javascript'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
+// Only these frontend assets are public; never expose backend source or configuration.
+const files = {
+  '/': ['index.html', 'text/html'],
+  '/style.css': ['style.css', 'text/css'],
+  '/app.js': ['app.js', 'text/javascript'],
+  '/voice/client.js': ['voice/client.js', 'text/javascript'],
+  '/voice/pcm-worklet.js': ['voice/pcm-worklet.js', 'text/javascript'],
+  '/assets/favicon.svg': ['assets/favicon.svg', 'image/svg+xml']
+};
 
 export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fetchProvider = fetch, now = () => new Date() } = {}) {
   const sessions = new Map();
@@ -22,7 +30,7 @@ export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fe
       const url = new URL(req.url, `http://${req.headers.host}`);
       if (req.method === 'GET' && files[url.pathname]) {
         const [file, type] = files[url.pathname];
-        const content = await readFile(new URL(`./public/${file}`, import.meta.url));
+        const content = await readFile(new URL(`../frontend/${file}`, import.meta.url));
         res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` });
         return res.end(content);
       }

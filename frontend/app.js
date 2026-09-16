@@ -1,4 +1,4 @@
-import { VoiceBoxOffice } from './voice.js';
+import { VoiceBoxOffice } from './voice/client.js';
 const $ = s => document.querySelector(s);
 const form = $('#filters');
 const booking = $('#booking');

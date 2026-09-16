@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { localDate, programme, searchScreenings, prepareBooking, confirmBooking } from '../lib/cinema.js';
+import { localDate, programme, searchScreenings, prepareBooking, confirmBooking } from '../../backend/cinema/service.js';
 const now = new Date('2026-09-16T02:00:00Z'); // 10:00 Singapore.
 
 test('the programme follows Singapore midnight and excludes started screenings', () => {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from '../server.js';
+import { readFile } from 'node:fs/promises';
+import { createServer } from '../../backend/server.js';
 const now = () => new Date('2026-09-16T02:00:00Z');
 async function fixture(t, options = {}) {
   const server = createServer({ now, apiKey: '', ...options });
@@ -10,10 +11,39 @@ async function fixture(t, options = {}) {
   const post = (path, body = {}, cookie = '', origin = url) => fetch(url + path, { method: 'POST', headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   return { url, post };
 }
+test('frontend entry point, module imports, styles, icon and worklet resolve', async t => {
+  const { url } = await fixture(t);
+  const assets = [
+    ['/', 'index.html', 'text/html'],
+    ['/style.css', 'style.css', 'text/css'],
+    ['/app.js', 'app.js', 'text/javascript'],
+    ['/voice/client.js', 'voice/client.js', 'text/javascript'],
+    ['/voice/pcm-worklet.js', 'voice/pcm-worklet.js', 'text/javascript'],
+    ['/assets/favicon.svg', 'assets/favicon.svg', 'image/svg+xml']
+  ];
+  const contents = new Map();
+  for (const [path, file, type] of assets) {
+    const response = await fetch(url + path);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get('content-type'), `${type}; charset=utf-8`, path);
+    const content = await response.text();
+    assert.equal(content, await readFile(new URL(`../../frontend/${file}`, import.meta.url), 'utf8'), path);
+    contents.set(path, content);
+  }
+  assert.match(contents.get('/'), /type="module" src="\/app\.js"/);
+  assert.match(contents.get('/'), /href="\/style\.css"/);
+  assert.match(contents.get('/'), /href="\/assets\/favicon\.svg"/);
+  assert.match(contents.get('/app.js'), /from '\.\/voice\/client\.js'/);
+  assert.match(contents.get('/voice/client.js'), /new URL\('\.\/pcm-worklet\.js', import\.meta\.url\)/);
+});
 test('missing key, origin isolation, and private files fail safely', async t => {
   const { url, post } = await fixture(t);
-  assert.equal((await fetch(url + '/.env')).status, 404);
-  assert.equal((await fetch(url + '/server.js')).status, 404);
+  for (const path of [
+    '/.env', '/.env.example', '/package.json', '/README.md',
+    '/backend/server.js', '/backend/cinema/service.js', '/backend/cinema/films.json', '/backend/voice/agent.js',
+    '/frontend/index.html', '/test/backend/server.test.js', '/scripts/check.js',
+    '/server.js', '/lib/cinema.js', '/data/films.json', '/public/app.js', '/voice.js', '/pcm-worklet.js'
+  ]) assert.equal((await fetch(url + path)).status, 404, path);
   assert.equal((await post('/api/tool', {}, '', 'https://unrelated.example')).status, 403);
   const p = await (await fetch(url + '/api/programme')).json();
   assert.equal(p.voiceConfigured, false);

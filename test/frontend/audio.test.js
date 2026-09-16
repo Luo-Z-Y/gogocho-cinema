@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-const code = readFileSync(new URL('../public/pcm-worklet.js', import.meta.url), 'utf8');
+const code = readFileSync(new URL('../../frontend/voice/pcm-worklet.js', import.meta.url), 'utf8');
 for (const rate of [24000, 44100, 48000]) test(`audio preserves timing across blocks at ${rate} Hz`, () => {
   let Processor;
   const frames = [];

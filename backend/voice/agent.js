@@ -1,4 +1,4 @@
-import { films, programme } from './cinema.js';
+import { films, programme } from '../cinema/service.js';
 
 export function agentConfig(now = new Date()) {
   const p = programme(now);

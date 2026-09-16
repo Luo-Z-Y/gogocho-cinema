@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { films } from '../lib/cinema.js';
+import { films } from '../backend/cinema/service.js';
 import assert from 'node:assert/strict';
 const root = new URL('../', import.meta.url);
 for (const path of readdirSync(root, { recursive: true }).filter(p => p.endsWith('.js') && !p.startsWith('node_modules/'))) {

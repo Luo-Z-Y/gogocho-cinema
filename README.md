@@ -6,7 +6,7 @@ Built for a solo entry to the [AssemblyAI Voice Agent Hackathon](https://lablab.
 
 ## Run locally
 
-Requires Node.js 22.9 or later. There are no npm dependencies or build steps.
+Requires Node.js 22.9 or later. There are no npm dependencies or build steps. Run commands from the repository root; `npm start` launches `backend/server.js` and serves the frontend from the same local address.
 
 ```sh
 npm start
@@ -41,7 +41,7 @@ All films, screening times, prices and bookings are fictional. Content notes are
 
 ## How it works
 
-`server.js` serves the browser and validates tool requests. `data/films.json` is the source of catalogue content and each film's daily screening slot. `lib/cinema.js` generates future screenings, filters them and validates booking reviews. `lib/agent.js` supplies the voice brief and tool schemas.
+`backend/server.js` serves the frontend and validates tool requests. `backend/cinema/films.json` is the source of catalogue content and each film's daily screening slot. `backend/cinema/service.js` generates future screenings, filters them and validates booking reviews. `backend/voice/agent.js` supplies the voice brief and tool schemas.
 
 The server exchanges `ASSEMBLYAI_API_KEY` for a single-use token. The browser connects directly to AssemblyAI using that token and sends inline session configuration. The agent can call `search_screenings` and `prepare_booking`; the browser routes these requests to the local server. Neither tool confirms a booking. A separate browser confirmation request validates the current cookie-scoped review.
 
@@ -58,73 +58,100 @@ API routes:
 
 ## File organisation
 
-The current layout is appropriate for this small, dependency-free application. It separates server rules, browser behaviour, catalogue data and verification without introducing a framework, build pipeline or unnecessary directory layers. The 16 September 2026 organisation review kept the existing paths; no restructuring was needed.
+The folders reflect the execution boundaries and features: **`frontend/` runs in the browser**, **`backend/` runs in Node.js**, and **`test/` mirrors those two sides**. This is still one dependency-free application, served by one Node.js process—not separately deployed frontend/backend services.
+
+The old `public/` folder was the frontend, but its name described static-file delivery rather than architecture. Following the user's clarified preference on 16 September 2026, it was replaced by `frontend/`; the root server and generic `lib/`/`data/` directories were grouped under `backend/`.
 
 Tracked project files (Git internals and ignored local files are omitted):
 
 ```text
 gogocho/
-├── server.js                 # Node.js entry point, HTTP routes and local session state
-├── package.json              # Node version, ES modules and npm commands
-├── .env.example              # Local configuration template; never put real keys here
-├── .gitignore                # Excludes credentials, logs and local/generated artefacts
-├── AGENTS.md                 # Workspace coding, verification and documentation conventions
-├── README.md                 # Setup, architecture, file map and current scope
-├── data/
-│   └── films.json            # Original fictional films, poster colours and daily slots
-├── lib/                     # Server-side application modules
-│   ├── cinema.js             # Programme, filtering, prices and booking validation
-│   └── agent.js              # Voice prompt, greeting, audio options and tool schemas
-├── public/                  # Browser code and assets; no secrets
-│   ├── index.html            # Page structure, controls and booking dialogue
-│   ├── style.css             # Layout, typography, posters and responsive/accessibility styles
-│   ├── app.js                # DOM updates, forms, API requests and voice/UI integration
-│   ├── voice.js              # Voice session, microphone, playback and tool-event handling
-│   ├── pcm-worklet.js        # Audio-thread resampling to 24 kHz mono PCM16 frames
-│   └── favicon.svg           # Local site icon
-├── test/                    # Automated Node tests; provider/audio fixtures are simulated
-│   ├── cinema.test.js        # Schedule, filters, booking rules, expiry and retries
-│   ├── server.test.js        # HTTP safeguards, cookie isolation and mocked token exchange
-│   ├── voice.test.js         # Tool events, interruption/cleanup and input diagnostics
-│   └── audio.test.js         # Worklet PCM format and resampling timing
+├── frontend/                    # Browser application; never store provider keys here
+│   ├── index.html               # Page structure, controls and booking dialogue
+│   ├── style.css                # Layout, typography, responsive/accessibility styles
+│   ├── app.js                   # DOM updates, forms, HTTP requests and voice/UI integration
+│   ├── assets/
+│   │   └── favicon.svg          # Local site icon
+│   └── voice/
+│       ├── client.js            # Voice session, microphone, playback and tool events
+│       └── pcm-worklet.js       # Audio-thread conversion to 24 kHz mono PCM16
+├── backend/                     # Trusted application rules and HTTP boundary
+│   ├── server.js                # Entry point, routes, token exchange and local session state
+│   ├── cinema/
+│   │   ├── service.js           # Programme, filtering, prices and booking validation
+│   │   └── films.json           # Original fictional catalogue and daily screening slots
+│   └── voice/
+│       └── agent.js             # Voice prompt, greeting, audio options and tool schemas
+├── test/                        # Node tests; provider/audio fixtures are simulated
+│   ├── frontend/
+│   │   ├── voice.test.js        # Tool events, interruption/cleanup and input diagnostics
+│   │   └── audio.test.js        # Worklet PCM format and resampling timing
+│   └── backend/
+│       ├── cinema.test.js       # Schedule, filters, booking rules, expiry and retries
+│       └── server.test.js       # Asset loading, privacy, HTTP/cookies and mocked tokens
 ├── scripts/
-│   └── check.js              # JavaScript syntax and catalogue consistency checks
-└── docs/
-    ├── DEMO.md               # Manual/live scenarios, completion criteria and run records
-    └── PROGRESS.md           # Dated changes, verification evidence, risks and decisions
+│   └── check.js                 # JavaScript syntax and catalogue consistency checks
+├── docs/
+│   ├── DEMO.md                  # Manual/live scenarios, completion criteria and run records
+│   └── PROGRESS.md              # Dated changes, evidence, risks and decisions
+├── package.json                 # Shared Node version, ES modules and npm commands
+├── .env.example                 # Configuration template; never put real keys here
+├── .gitignore                   # Excludes credentials, logs and local/generated artefacts
+├── AGENTS.md                    # Workspace coding and documentation conventions
+└── README.md                    # Setup, architecture, file map and current scope
 ```
-
-A local `.env` may sit beside `server.js`, but it is ignored by Git and must remain private. `npm start`/`npm run dev` load it into the server environment. There is no compiled output directory or database; reviews and local rate-limit counters currently live in server memory.
 
 ### Responsibilities and boundaries
 
-- **`server.js` handles HTTP and server state.** It serves an explicit allowlist of files from `public/`, checks request origins, scopes reviews to a browser cookie, exchanges the provider key for temporary tokens and routes requests to the application functions. Adding a file to `public/` alone does not make it available over HTTP; add an intentional route to the allowlist if needed. The repository root, `.env`, `lib/` and `data/` are not exposed as static directories.
-- **`lib/cinema.js` owns the cinema rules.** It loads `data/films.json`, calculates screenings and finish times, validates search/booking arguments, calculates simulated totals and checks confirmation eligibility. It does not depend on HTTP, the browser or AssemblyAI. Do not move authoritative price, time or booking validation into the prompt or UI.
-- **`lib/agent.js` describes the conversation, not tool implementations.** It uses the catalogue and programme to build the prompt and allowed tool arguments. Its configuration is sent to the browser and AssemblyAI, so it must not contain secrets. Tool schemas guide the agent; server-side validation remains necessary.
-- **`public/app.js` owns the page.** It renders films and reviews, synchronises filter controls, handles explicit confirmation and supplies callbacks to `VoiceBoxOffice`. **`public/voice.js` owns the voice connection and audio lifecycle**, reporting transcripts, input levels, state and tool requests through those callbacks rather than querying page elements itself. **`public/pcm-worklet.js`** runs the audio processing separately from the page's main thread.
-- **`test/`, `scripts/` and `docs/` are development support, not browser assets.** Automated tests do not establish live-provider quality. Keep live rehearsal evidence in the demo/progress documents. The linked Obsidian plan and progress log live outside this repository in the sibling `whatever-it-takes/03 Projects/Gogocho` folder.
+- **Frontend presentation:** `frontend/app.js` owns film/review rendering, filter synchronisation and explicit confirmation. It imports the voice client and supplies callbacks for transcripts, connection/input state and tool requests. HTML and CSS remain separate from those event handlers.
+- **Frontend voice:** `frontend/voice/client.js` manages the AssemblyAI WebSocket and audio lifecycle without querying page elements. It loads its sibling `pcm-worklet.js` relative to `import.meta.url`, so audio processing runs off the page's main thread. This is browser integration, not the cinema's business logic.
+- **Backend cinema:** `backend/cinema/service.js` loads the neighbouring catalogue and owns programme generation, strict time filtering, simulated totals, review expiry and confirmation validation. It does not depend on HTTP, the browser or AssemblyAI. The catalogue's filesystem location stays private; its fictional content reaches the browser through API responses.
+- **Backend voice configuration:** `backend/voice/agent.js` builds the prompt and tool schemas using the cinema service. It describes available operations; it does not execute them. Its configuration is sent to the browser and provider, so it must contain no secrets. The agent's proposed arguments still require server-side validation.
+- **Backend HTTP:** `backend/server.js` connects those modules to the API, checks origins, scopes reviews to browser cookies and exchanges the server-only key for temporary tokens. Reviews and rate-limit counters remain in memory; there is no database or compiled output directory.
+- **Verification and documentation:** `test/frontend/` and `test/backend/` identify the code under test; both run through `npm test` in Node.js. They are not live browser/provider tests. `scripts/` holds maintenance checks, while `docs/` records manual/live scenarios and evidence. Obsidian notes remain outside this repository in the sibling `whatever-it-takes/03 Projects/Gogocho` folder.
 
-### How the files connect
+### How the architecture connects
 
-1. `server.js` imports `lib/cinema.js` and `lib/agent.js`; `lib/agent.js` also uses the catalogue/programme exported by `lib/cinema.js`. The catalogue JSON is loaded on the server, and the browser receives catalogue and screening data through API responses.
-2. `public/index.html` loads `public/app.js` as an ES module. `app.js` imports `VoiceBoxOffice` from `voice.js`; `voice.js` loads `/pcm-worklet.js` through the browser's AudioWorklet API when capture starts.
-3. A form search goes from `app.js` to `POST /api/tool`, through `server.js` to `searchScreenings()` in `lib/cinema.js`. A voice search first arrives as AssemblyAI's `tool.call` event in `voice.js`, then uses the `runTool` callback in `app.js` and the same server endpoint. Returned data updates the page; for a voice call it also goes back to AssemblyAI as `tool.result`.
-4. `prepare_booking` follows that same path to `prepareBooking()` and opens a review. Only the visitor's confirmation action in `app.js` calls `POST /api/confirm`, which checks the review through `confirmBooking()`. Confirmation is not an agent tool; all bookings remain fictional.
+```text
+frontend/app.js -- /api/* --> backend/server.js
+       |                         |-- cinema/service.js --> cinema/films.json
+       |                         `-- voice/agent.js ----> cinema/service.js
+       v
+frontend/voice/client.js <--> AssemblyAI Voice Agent API
+       `-- pcm-worklet.js
+```
+
+1. The page loads `app.js`, which imports the browser voice client. Starting voice obtains a temporary token and agent configuration from `/api/voice-session`; microphone audio then goes directly to AssemblyAI, not through the cinema server.
+2. A form search goes from `app.js` to `/api/tool`, then to `searchScreenings()` in the backend cinema service. A voice search first arrives as `tool.call` in the voice client and uses the `runTool` callback in `app.js` to reach that same endpoint. Results update the page and return to the agent as `tool.result`.
+3. `prepare_booking` follows the same path to `prepareBooking()` and opens a review. The visitor's confirmation action separately calls `/api/confirm`, which checks the review through `confirmBooking()`. There is no confirmation tool; all bookings remain fictional.
+
+### Filesystem paths versus browser URLs
+
+The backend serves **only explicitly allowlisted frontend assets**. Folder names alone do not enforce security, and adding a file under `frontend/` does not automatically expose it.
+
+| Browser URL | Source file |
+| --- | --- |
+| `/` | `frontend/index.html` |
+| `/app.js` | `frontend/app.js` |
+| `/style.css` | `frontend/style.css` |
+| `/assets/favicon.svg` | `frontend/assets/favicon.svg` |
+| `/voice/client.js` | `frontend/voice/client.js` |
+| `/voice/pcm-worklet.js` | `frontend/voice/pcm-worklet.js` |
+
+`/backend/*`, repository configuration, tests and `.env` are not static routes. Keep the private `.env` at the repository root beside `package.json`; `npm start`/`npm run dev` load it into the backend environment. Do not copy it into `frontend/`. After upgrading from the old layout, restart the server with `npm start` and reload the page to pick up the nested voice/icon URLs. The application URL and all `/api/*` routes are unchanged; restarting clears in-memory reviews and limits.
 
 ### Where to make a change
 
 | Change | Start here | Verify with |
 | --- | --- | --- |
-| Film copy, runtime, poster colours or daily screening slot | `data/films.json` | `npm run check`, cinema tests and affected demo expectations |
-| Schedule generation, filtering, ticket price or review/confirmation rules | `lib/cinema.js` | `test/cinema.test.js` and relevant server tests |
-| Conversation style, greeting, voice options or tool instructions | `lib/agent.js` | Automated regression checks plus separately recorded live-agent scenarios |
-| Layout, controls, film cards or review presentation | `public/index.html`, `public/style.css`, `public/app.js` | Browser viewport/keyboard checks and UI synchronisation with simulated tools |
-| Microphone selection, WebSocket events, playback or audio conversion | `public/voice.js`, `public/pcm-worklet.js` | `test/voice.test.js`, `test/audio.test.js` and separately recorded real-device checks |
-| API routing, token exchange, origin checks or session storage | `server.js` | `test/server.test.js` and affected manual/live scenarios |
+| Film copy, runtime, poster colours or daily screening slot | `backend/cinema/films.json` | `npm run check`, cinema tests and affected demo expectations |
+| Scheduling, filters, ticket price or review/confirmation rules | `backend/cinema/service.js` | `test/backend/cinema.test.js` and relevant server tests |
+| Conversation style, greeting, voice options or tool instructions | `backend/voice/agent.js` | Automated checks plus separately recorded live-agent scenarios |
+| Layout, controls, film cards or reviews | `frontend/index.html`, `frontend/style.css`, `frontend/app.js` | Browser viewport/keyboard checks and simulated-tool UI synchronisation |
+| Microphone, WebSocket events, playback or audio conversion | `frontend/voice/client.js`, `frontend/voice/pcm-worklet.js` | `test/frontend/` and separately recorded real-device checks |
+| API/static routes, token exchange, origin checks or session storage | `backend/server.js` | `test/backend/server.test.js` and affected manual/live scenarios |
 
-Adding a new agent tool is a cross-layer change: define its schema/instructions in `lib/agent.js`, implement and validate its operation in server-side code, explicitly route it in `server.js`, allow it in `public/voice.js`, and add any result rendering in `public/app.js`. Add matching tests; a schema alone does not execute a function or enforce its rules.
-
-If public authentication, durable storage or multiple voice providers make these modules harder to maintain, extract the growing responsibilities then—for example, server session/token handling or browser capture/playback. Moving everything under `src/` or creating controller/service layers now would add path changes without improving the existing separation. Any later file move must also update imports, the static-file allowlist, browser/worklet URLs, tests and this map.
+A new tool spans the architecture: define its schema in `backend/voice/agent.js`, implement and validate the operation in backend code, route it in `backend/server.js`, allow it in `frontend/voice/client.js`, and add any result rendering in `frontend/app.js`. Add matching tests; a schema alone does not execute a function or enforce its rules. Keep authoritative time, price and booking validation in the backend rather than duplicating it in the UI or prompt.
 
 ## Scope and verification
 
@@ -143,7 +170,7 @@ Automated tests cover scheduling, constraints, review validation, cookie isolati
 
 ## Next milestone
 
-**Current stage: local prototype working; full spoken booking verification pending.** On 16 September 2026, the documentation checkpoint reran all 17 automated tests and the syntax/catalogue checks successfully. No new browser or live-provider session was run at that checkpoint; earlier live evidence is recorded separately in [the detailed progress log](docs/PROGRESS.md).
+**Current stage: local prototype working; full spoken booking verification pending.** The 16 September 2026 frontend/backend reorganisation passed all 18 automated tests and the syntax/catalogue checks. An isolated Chrome rehearsal checked the relocated modules, real AudioWorklet with synthetic input, simulated voice tools, demo confirmation and responsive controls. This was not a live-provider conversation; results and limitations are recorded in [the detailed progress log](docs/PROGRESS.md).
 
 The delivery order is:
 

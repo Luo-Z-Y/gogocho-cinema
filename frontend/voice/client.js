@@ -37,7 +37,7 @@ export class VoiceBoxOffice {
       if (!current()) return;
       await this.listInputs();
       if (!current()) return;
-      await this.capture.audioWorklet.addModule('/pcm-worklet.js');
+      await this.capture.audioWorklet.addModule(new URL('./pcm-worklet.js', import.meta.url));
       if (!current()) return;
       this.mic = this.capture.createMediaStreamSource(stream);
       this.worklet = new AudioWorkletNode(this.capture, 'gogocho-pcm', { processorOptions: { inputSampleRate: this.capture.sampleRate } });

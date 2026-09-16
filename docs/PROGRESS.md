@@ -196,3 +196,63 @@ No files were moved or renamed. No imports, static routes, provider configuratio
 - Full spoken booking, live edge-case reliability, public deployment and submission remain pending; this architecture review does not advance those verification milestones.
 
 Version control decision: commit the verified README/progress update locally. No push because no remote is configured. The aligned Obsidian notes remain outside Git in the separate vault. Next: complete and record the full spoken booking rehearsal using `docs/DEMO.md`.
+
+## 16 September 2026 — Architecture-led frontend/backend reorganisation
+
+### Request and decision
+
+The user clarified that folder names should express the architecture, not just static-file delivery: “public is like the frontend?” This supersedes the earlier decision to retain the layout. The old modules were functionally separated, but `public/`, root `server.js` and generic `lib/`/`data/` names did not make runtime ownership obvious.
+
+Against baseline `a42be57`, reorganised the same dependency-free application into `frontend/`, `backend/`, and matching `test/frontend/` and `test/backend/` directories. Work started at 17:13 Singapore time (UTC+08:00). No framework, bundler, separate deployment, additional npm dependency or new product feature was introduced.
+
+### File moves and integration changes
+
+| Previous location | New location / responsibility |
+| --- | --- |
+| `public/index.html`, `public/style.css`, `public/app.js` | `frontend/` — browser presentation and API/UI integration |
+| `public/voice.js` | `frontend/voice/client.js` — browser voice/session/audio lifecycle |
+| `public/pcm-worklet.js` | `frontend/voice/pcm-worklet.js` — audio-thread PCM conversion |
+| `public/favicon.svg` | `frontend/assets/favicon.svg` — static presentation asset |
+| `server.js` | `backend/server.js` — Node entry point, HTTP boundary and local state |
+| `lib/cinema.js`, `data/films.json` | `backend/cinema/service.js`, `backend/cinema/films.json` — authoritative rules and original catalogue |
+| `lib/agent.js` | `backend/voice/agent.js` — conversational brief and tool schemas |
+| Four root test files | `test/backend/` for cinema/HTTP, `test/frontend/` for voice/audio |
+
+Updated backend imports, the catalogue's module-relative path, frontend imports/icon URL, test imports, the catalogue-check import, and both npm launch commands. The browser voice client now loads its sibling worklet with `new URL('./pcm-worklet.js', import.meta.url)` instead of a root-level hard-coded worklet URL.
+
+The backend's explicit static allowlist now maps the frontend root to `/`, with nested `/voice/client.js`, `/voice/pcm-worklet.js` and `/assets/favicon.svg` asset URLs. `/app.js` and `/style.css` remain unchanged. The app address and all `/api/*` routes are unchanged; backend source/configuration are not static routes. The `.env` file stays private at the repository root beside `package.json`, not inside either application directory.
+
+Cinema calculations, original film content, prices, quantities, review/confirmation rules, provider settings and visual design are unchanged. Voice still cannot confirm a booking. All films, screenings, prices and bookings remain fictional.
+
+### Automated verification
+
+- `npm test`: **18 passed, 0 failed, 0 skipped**. Existing scheduling, constraints, review/cookie isolation, mocked token handling, voice events and resampling tests continue to pass from their new paths.
+- Added an HTTP test that checks all six frontend asset responses against the relocated source files, validates their content types, and checks the page/module/worklet references.
+- Expanded private-file rejection checks to include backend source and catalogue paths, frontend filesystem paths, configuration, tests/scripts and retired URLs. These remain inaccessible as static resources.
+- `npm run check`: **passed** — syntax and catalogue validation use the reorganised source tree.
+- Architecture/documentation checks: README tree matches all 22 tracked files; relative JavaScript imports resolve; eight local Markdown/heading links and both Obsidian links resolve. Five project documents have no trailing whitespace; `git diff --cached --check` passed. Confirmed the catalogue, stylesheet, worklet processor and icon are byte-for-byte unchanged from the baseline. `.env` remains ignored.
+
+### Isolated browser verification — simulated provider, not live voice
+
+Used Chrome 152.0.7977.83 with a separate ephemeral-port server fixture, a fixed Singapore date and synthetic 440 Hz microphone input. The token response and browser WebSocket were simulated; no provider key or live AssemblyAI service was used in this rehearsal.
+
+Two complete consecutive runs passed after the harness adjustments below:
+
+- Loaded the moved page, style, ES module and nested voice client. Confirmed the nested worklet request at the fixture server and observed non-zero PCM frames from the real browser AudioWorklet.
+- Filtered 17 September screenings to two light films under two hours finishing before 22:00. Opened The Last Table review at 17:00, checked the 18:36 finish and S$24 total, changed to three tickets/S$36 and explicitly confirmed a DEMO reference.
+- Ran the six-second local Test mic with synthetic sound. It released all input tracks and made no token or WebSocket request.
+- Started one simulated voice session per run, sent actual worklet PCM frames to the mocked socket, delivered search/prepare tool events, and verified both backend results and UI synchronisation. The two-ticket result remained `awaiting_confirmation` until the on-screen click, after which the confirmation context was sent to the agent.
+- Ended the simulated conversation, observed `session.end` and verified microphone-track cleanup.
+- Checked 1440/801/390/320 px layouts, constant finish-control height, keyboard activation/focus and no horizontal overflow. Inspected desktop/mobile screenshots. Complete runs had no page errors or failed page requests.
+
+Initial observations and harness corrections: one early attempt timed out waiting for the local microphone-success label; the cause was not isolated and is not claimed as a fixed application defect. Added PCM diagnostics for subsequent runs. A later assertion incorrectly assumed Playwright's page-level response events reported the AudioWorklet module fetch, despite successful capture; changed the harness to observe server requests and actual PCM output instead. No application audio logic was changed to make these checks pass. Real microphone/Bluetooth quality and the full spoken booking remain separate live checks.
+
+Temporary, uncommitted evidence: `/private/tmp/gogocho-architecture-check.cjs`, `gogocho-architecture-tone.wav`, `gogocho-architecture-1440.png` and `gogocho-architecture-320.png` in the same temporary directory. The script uses a pre-existing local Playwright installation, not a project dependency; the WAV is generated test tone, not a recording.
+
+### Local runtime and documentation
+
+Verified the old listening process belonged to this project, stopped it and restarted through the updated `npm start`. The local server at `http://127.0.0.1:3000/` serves the new assets and eight-film fictional programme. Its existing voice configuration is detected without requesting a token or displaying the credential. As expected, restarting cleared in-memory reviews and rate-limit counters. Reload an existing page to load the relocated voice/icon URLs. Server output is in `/private/tmp/gogocho-architecture-server.log`.
+
+Replaced the README file map and architecture guide with the frontend/backend tree, runtime responsibilities, dependency/request diagram, filesystem-to-URL mapping, root `.env` guidance and updated change-to-file/test paths. Updated the linked Obsidian plan/progress notes. Historical entries retain the paths and test counts that were correct at those checkpoints; the current source layout is described in [README.md](../README.md#file-organisation).
+
+Version control decision: commit the verified reorganisation and documentation locally. Do not push because no remote is configured. Vault notes remain outside the software repository. Next: complete the full live spoken booking rehearsal; this simulated browser journey does not satisfy that milestone.

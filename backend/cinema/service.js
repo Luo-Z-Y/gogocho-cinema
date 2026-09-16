@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
-export const films = JSON.parse(readFileSync(new URL('../data/films.json', import.meta.url), 'utf8'));
+export const films = JSON.parse(readFileSync(new URL('./films.json', import.meta.url), 'utf8'));
 export const TIME_ZONE = 'Asia/Singapore';
 export const TICKET_CENTS = 1200;
 export function localDate(now = new Date()) {

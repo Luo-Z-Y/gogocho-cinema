@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { VoiceBoxOffice } from '../public/voice.js';
+import { VoiceBoxOffice } from '../../frontend/voice/client.js';
 
 function fixture() {
   const sent = [];
