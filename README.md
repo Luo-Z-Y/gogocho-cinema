@@ -56,6 +56,76 @@ API routes:
 | `POST /api/confirm` | Confirm the current demo review by quote ID |
 | `POST /api/voice-session` | Exchange the server key for a temporary token and session configuration |
 
+## File organisation
+
+The current layout is appropriate for this small, dependency-free application. It separates server rules, browser behaviour, catalogue data and verification without introducing a framework, build pipeline or unnecessary directory layers. The 16 September 2026 organisation review kept the existing paths; no restructuring was needed.
+
+Tracked project files (Git internals and ignored local files are omitted):
+
+```text
+gogocho/
+├── server.js                 # Node.js entry point, HTTP routes and local session state
+├── package.json              # Node version, ES modules and npm commands
+├── .env.example              # Local configuration template; never put real keys here
+├── .gitignore                # Excludes credentials, logs and local/generated artefacts
+├── AGENTS.md                 # Workspace coding, verification and documentation conventions
+├── README.md                 # Setup, architecture, file map and current scope
+├── data/
+│   └── films.json            # Original fictional films, poster colours and daily slots
+├── lib/                     # Server-side application modules
+│   ├── cinema.js             # Programme, filtering, prices and booking validation
+│   └── agent.js              # Voice prompt, greeting, audio options and tool schemas
+├── public/                  # Browser code and assets; no secrets
+│   ├── index.html            # Page structure, controls and booking dialogue
+│   ├── style.css             # Layout, typography, posters and responsive/accessibility styles
+│   ├── app.js                # DOM updates, forms, API requests and voice/UI integration
+│   ├── voice.js              # Voice session, microphone, playback and tool-event handling
+│   ├── pcm-worklet.js        # Audio-thread resampling to 24 kHz mono PCM16 frames
+│   └── favicon.svg           # Local site icon
+├── test/                    # Automated Node tests; provider/audio fixtures are simulated
+│   ├── cinema.test.js        # Schedule, filters, booking rules, expiry and retries
+│   ├── server.test.js        # HTTP safeguards, cookie isolation and mocked token exchange
+│   ├── voice.test.js         # Tool events, interruption/cleanup and input diagnostics
+│   └── audio.test.js         # Worklet PCM format and resampling timing
+├── scripts/
+│   └── check.js              # JavaScript syntax and catalogue consistency checks
+└── docs/
+    ├── DEMO.md               # Manual/live scenarios, completion criteria and run records
+    └── PROGRESS.md           # Dated changes, verification evidence, risks and decisions
+```
+
+A local `.env` may sit beside `server.js`, but it is ignored by Git and must remain private. `npm start`/`npm run dev` load it into the server environment. There is no compiled output directory or database; reviews and local rate-limit counters currently live in server memory.
+
+### Responsibilities and boundaries
+
+- **`server.js` handles HTTP and server state.** It serves an explicit allowlist of files from `public/`, checks request origins, scopes reviews to a browser cookie, exchanges the provider key for temporary tokens and routes requests to the application functions. Adding a file to `public/` alone does not make it available over HTTP; add an intentional route to the allowlist if needed. The repository root, `.env`, `lib/` and `data/` are not exposed as static directories.
+- **`lib/cinema.js` owns the cinema rules.** It loads `data/films.json`, calculates screenings and finish times, validates search/booking arguments, calculates simulated totals and checks confirmation eligibility. It does not depend on HTTP, the browser or AssemblyAI. Do not move authoritative price, time or booking validation into the prompt or UI.
+- **`lib/agent.js` describes the conversation, not tool implementations.** It uses the catalogue and programme to build the prompt and allowed tool arguments. Its configuration is sent to the browser and AssemblyAI, so it must not contain secrets. Tool schemas guide the agent; server-side validation remains necessary.
+- **`public/app.js` owns the page.** It renders films and reviews, synchronises filter controls, handles explicit confirmation and supplies callbacks to `VoiceBoxOffice`. **`public/voice.js` owns the voice connection and audio lifecycle**, reporting transcripts, input levels, state and tool requests through those callbacks rather than querying page elements itself. **`public/pcm-worklet.js`** runs the audio processing separately from the page's main thread.
+- **`test/`, `scripts/` and `docs/` are development support, not browser assets.** Automated tests do not establish live-provider quality. Keep live rehearsal evidence in the demo/progress documents. The linked Obsidian plan and progress log live outside this repository in the sibling `whatever-it-takes/03 Projects/Gogocho` folder.
+
+### How the files connect
+
+1. `server.js` imports `lib/cinema.js` and `lib/agent.js`; `lib/agent.js` also uses the catalogue/programme exported by `lib/cinema.js`. The catalogue JSON is loaded on the server, and the browser receives catalogue and screening data through API responses.
+2. `public/index.html` loads `public/app.js` as an ES module. `app.js` imports `VoiceBoxOffice` from `voice.js`; `voice.js` loads `/pcm-worklet.js` through the browser's AudioWorklet API when capture starts.
+3. A form search goes from `app.js` to `POST /api/tool`, through `server.js` to `searchScreenings()` in `lib/cinema.js`. A voice search first arrives as AssemblyAI's `tool.call` event in `voice.js`, then uses the `runTool` callback in `app.js` and the same server endpoint. Returned data updates the page; for a voice call it also goes back to AssemblyAI as `tool.result`.
+4. `prepare_booking` follows that same path to `prepareBooking()` and opens a review. Only the visitor's confirmation action in `app.js` calls `POST /api/confirm`, which checks the review through `confirmBooking()`. Confirmation is not an agent tool; all bookings remain fictional.
+
+### Where to make a change
+
+| Change | Start here | Verify with |
+| --- | --- | --- |
+| Film copy, runtime, poster colours or daily screening slot | `data/films.json` | `npm run check`, cinema tests and affected demo expectations |
+| Schedule generation, filtering, ticket price or review/confirmation rules | `lib/cinema.js` | `test/cinema.test.js` and relevant server tests |
+| Conversation style, greeting, voice options or tool instructions | `lib/agent.js` | Automated regression checks plus separately recorded live-agent scenarios |
+| Layout, controls, film cards or review presentation | `public/index.html`, `public/style.css`, `public/app.js` | Browser viewport/keyboard checks and UI synchronisation with simulated tools |
+| Microphone selection, WebSocket events, playback or audio conversion | `public/voice.js`, `public/pcm-worklet.js` | `test/voice.test.js`, `test/audio.test.js` and separately recorded real-device checks |
+| API routing, token exchange, origin checks or session storage | `server.js` | `test/server.test.js` and affected manual/live scenarios |
+
+Adding a new agent tool is a cross-layer change: define its schema/instructions in `lib/agent.js`, implement and validate its operation in server-side code, explicitly route it in `server.js`, allow it in `public/voice.js`, and add any result rendering in `public/app.js`. Add matching tests; a schema alone does not execute a function or enforce its rules.
+
+If public authentication, durable storage or multiple voice providers make these modules harder to maintain, extract the growing responsibilities then—for example, server session/token handling or browser capture/playback. Moving everything under `src/` or creating controller/service layers now would add path changes without improving the existing separation. Any later file move must also update imports, the static-file allowlist, browser/worklet URLs, tests and this map.
+
 ## Scope and verification
 
 This is a local prototype. It binds to `127.0.0.1`, checks mutation origins, and keeps reviews in memory per browser cookie. Restarting the server clears reviews. No database, authentication, real seat inventory or payment system is included. Different tabs in the same browser share the latest review; an older review is rejected at confirmation.

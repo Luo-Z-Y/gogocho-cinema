@@ -4,7 +4,7 @@
 
 **Stage: local prototype working; end-to-end live demonstration pending.** The programme, demo booking and voice integration are implemented. Live API access and an AirPods conversation have been established, but a complete spoken discovery-to-confirmation journey has not been verified.
 
-The latest entry below records the detailed readiness checkpoint, fresh automated results, outstanding risks and completion criteria. Earlier entries are historical: statements such as “live voice remains unverified” describe that earlier checkpoint, not the current state. Use [the demo checklist](DEMO.md) to record the next live run.
+The entries below record implementation changes, architecture decisions, verification evidence, outstanding risks and completion criteria. Earlier entries are historical: statements such as “live voice remains unverified” describe that earlier checkpoint, not the current state. Use [the demo checklist](DEMO.md) to record the next live run.
 
 ## 16 September 2026 — First local prototype
 
@@ -161,3 +161,38 @@ Updated HTML, client event handling and CSS, plus README, the demo checklist and
 Verification: all 17 existing automated tests and syntax/catalogue checks passed. Automated Chrome 152.0.7977.83 checks used 17 September screenings and verified the strict cutoff, clearing without losing mood, reset, keyboard activation/focus, and simulated voice-tool calls with an exact 18:37 cutoff and without a cutoff. At 1440/801/390/320 px, both states had identical filter-row height and no page overflow. Inspected screenshots at 1440/801/320 px; no page errors or provider token requests. This is local UI and simulated-tool evidence, not a new live conversation. Temporary script and screenshots use the `/private/tmp/gogocho-compact-time-` prefix.
 
 Version control decision: commit the completed, verified interface refinement locally. No push because no remote is configured. Obsidian notes remain outside the software repository. The full spoken booking rehearsal remains the next milestone.
+
+## 16 September 2026 — File organisation review and README architecture guide
+
+### Request and baseline
+
+The user asked for an explanation of the file organisation, a restructuring if justified, and documentation in the README. Reviewed the tracked file tree, entry points, imports, browser/worklet loading, HTTP/static routing, tool dispatch and verification commands against baseline `71690af` (`Keep finish-time selection in a single compact field`). Review started at 17:06 Singapore time (UTC+08:00).
+
+### Decision: retain the existing structure
+
+The current layout is suitable for a small, dependency-free Node.js application with native browser modules:
+
+- `server.js` owns the HTTP boundary, temporary-token exchange and in-memory browser review state. `lib/cinema.js` owns programme/booking rules without depending on HTTP or the provider; `lib/agent.js` owns conversational configuration and tool schemas.
+- `public/app.js` owns the page and passes callbacks to `public/voice.js`. Voice transport/audio lifecycle is already separated from DOM rendering, and `public/pcm-worklet.js` isolates audio-thread conversion.
+- Original catalogue data, automated tests, maintenance scripts and manual/live verification documents have distinct directories. The browser receives data through the API, not by importing private server modules.
+- A new `src/` hierarchy, framework or controller/service layer would create path churn without solving a present boundary problem. Revisit module extraction when authentication, durable storage, additional providers or growing audio responsibilities warrant it.
+
+No files were moved or renamed. No imports, static routes, provider configuration, catalogue, UI behaviour or booking rules changed. The compact finish-time control and existing fictional/demo safeguards are unchanged.
+
+### Documentation changes
+
+- Added [File organisation](../README.md#file-organisation) to `README.md`: an annotated tree of tracked files, server/browser/security boundaries, module/request flow and a change-to-file/verification guide.
+- Explained the distinction between `lib/agent.js` tool definitions and the validated implementations in `lib/cinema.js`, plus the browser/server allowlists required for a new tool. Documented the separate explicit confirmation route.
+- Explained that `public/` is served through an explicit allowlist, `.env` is private and ignored, server-side source paths are not static assets, and review/rate-limit state is currently in memory.
+- Recorded future restructuring triggers and the imports, static routes, worklet URLs and tests that a later file move would need to update.
+- Updated this progress record and the linked Obsidian project plan/progress log. The demo checklist is unchanged because no scenario or application behaviour changed.
+
+### Verification and remaining work
+
+- `npm test`: **17 passed, 0 failed, 0 skipped**.
+- `npm run check`: **passed** — JavaScript syntax and catalogue checks.
+- Documentation verification: the README tree matches all **22 tracked files**; all seven local Markdown links (including the new heading link) and both Obsidian links resolve. Checked five project documents for trailing whitespace and ran `git diff --check`; both passed. `.env` remains ignored and no credential contents were read.
+- The automated checks use local/simulated fixtures. No new browser rehearsal, microphone check or live-provider session was run for this documentation-only review.
+- Full spoken booking, live edge-case reliability, public deployment and submission remain pending; this architecture review does not advance those verification milestones.
+
+Version control decision: commit the verified README/progress update locally. No push because no remote is configured. The aligned Obsidian notes remain outside Git in the separate vault. Next: complete and record the full spoken booking rehearsal using `docs/DEMO.md`.
