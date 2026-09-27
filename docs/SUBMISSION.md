@@ -7,7 +7,8 @@ Updated: 27 September 2026, Singapore time.
 - Public demo: https://gogocho-cinema.vercel.app
 - Source: https://github.com/Luo-Z-Y/gogocho-cinema
 - Form: https://lablab.ai/ai-hackathons/assemblyai-voice-agent-hackathon/gogocho/submission
-- Current submission status: **Draft in progress; not yet submitted.**
+- Published entry: https://lablab.ai/ai-hackathons/assemblyai-voice-agent-hackathon/gogocho/gogocho-cinema
+- Current submission status: **Successfully submitted on 27 September 2026 at approximately 12:02 Singapore time.**
 - Form verified: three steps; title 5–50 characters, summary 50–255, long description 600–2000 characters/at least 100 words, categories and technologies; cover image (16:9 recommended), required video and required PDF presentation.
 - Chosen category: Voice Assistant. Technology options currently do not include AssemblyAI; Codex and Vercel are selected because both were used. The descriptions and deck explicitly identify AssemblyAI as the conversation provider.
 - Delivery format: narrated walkthrough using actual app screenshots and synthesised narration. It is not an uninterrupted live call recording. The scripted preview is labelled in the interface.
@@ -23,3 +24,9 @@ All film content and bookings are fictional. The model proposes operations, serv
 ## Prepared media
 
 Final files are retained locally under `artifacts/submission/` (ignored by Git and deployment): `gogocho-cover.png` (1920×1080), `gogocho-demo.mp4` (141 seconds, H.264/AAC), `gogocho-pitch.pdf` (six slides) and the editable `gogocho-pitch.pptx`. The video uses actual public-app screenshots and synthetic narration, disclosed at its start. All six deck renders and PDF pages were visually checked.
+
+## Submission confirmation
+
+Lablab displayed “Congratulations!” and confirmed successful submission to the AssemblyAI - Voice Agent Hackathon. The published entry shows Gogocho Cinema, team gogocho, the 27 September creation date and working links to the demo, GitHub and presentation. Its video loaded with no playback error and a 141.488-second duration. The page states judging is in progress. No judging result is claimed.
+
+Release source was committed and pushed as `5e7753f`; local and remote commit identifiers matched. Confirmation and public-entry screenshots are preserved in `artifacts/submission/`. The README and linked Obsidian plan/progress notes record the submitted state.

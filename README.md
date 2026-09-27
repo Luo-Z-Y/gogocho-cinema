@@ -2,9 +2,9 @@
 
 A conversational box office for a fictional independent cinema. Tell it your mood and available time, compare two films on screen, then review and explicitly confirm a demo booking.
 
-**[Open the cinema](https://gogocho-cinema.vercel.app)** · [Source](https://github.com/Luo-Z-Y/gogocho-cinema) · [Hackathon](https://lablab.ai/ai-hackathons/assemblyai-voice-agent-hackathon)
+**[Open the cinema](https://gogocho-cinema.vercel.app)** · [Source](https://github.com/Luo-Z-Y/gogocho-cinema) · [Submitted entry](https://lablab.ai/ai-hackathons/assemblyai-voice-agent-hackathon/gogocho/gogocho-cinema)
 
-Built as a solo entry by Zhiyang, with AI assistance. All eight films, screening times, prices and bookings are fictional. No payment is taken and no seats are reserved.
+Submitted on 27 September 2026 to the AssemblyAI Voice Agent Hackathon. Built as a solo entry by Zhiyang, with AI assistance. All eight films, screening times, prices and bookings are fictional. No payment is taken and no seats are reserved.
 
 ## Try it
 
