@@ -295,3 +295,27 @@ Added the ongoing commenting convention to `AGENTS.md`. Added [Code comments and
 No new browser rehearsal, microphone capture or live-provider call was performed for this commenting pass. Earlier simulated/browser/live evidence remains attributed to its original checkpoints. The existing local server was not restarted, and no private `.env` contents were read or modified. Full live spoken booking, remaining credits, cross-browser checks, deployment and submission are still outstanding.
 
 Version control decision: commit the verified code comments, commenting convention and aligned documentation locally. No push because no remote is configured. Obsidian notes remain outside the software repository. Next: complete and record the full spoken booking rehearsal; comments do not advance that verification milestone.
+
+## 2026-09-27 — Substantial demo upgrade and public hosting
+
+User requested a substantial improvement before hackathon submission. Built eight original geometric SVG posters, a clearer minimal programme, side-by-side film comparison, a labelled three-step guided preview, visible conversation activity, strict preference preservation and a polished confirmed ticket with calendar export. The preview uses real validated cinema APIs without an AI session. Fixed hold-mode tool ordering so results wait for reply.done and HTTP completion, with generation/interruption guards and regression tests.
+
+Added signed two-hour demo state so fictional reviews survive Vercel cold starts. Added a thin native Node hosting entry, explicit deployment files, HTTPS origin validation and secure cookies. Deployed at https://gogocho-cinema.vercel.app. User explicitly approved storing the local AssemblyAI key as a sensitive Vercel environment variable after automatic review required destination-specific permission. No key was printed or committed. Public sessions cap at three minutes; published WAF IP rule limits token starts to three per ten minutes, alongside signed-cookie and per-process backstops. These are not a hard account spending cap.
+
+Verification:
+
+- 26 automated tests and syntax/catalogue checks passed. New checks cover strict comparison, signed-state tampering/expiry/cross-instance confirmation, calendar content and both asynchronous hold-result orderings.
+- Public unauthenticated programme returned HTTP 200, eight films, seven dates and configured voice.
+- Real AssemblyAI generated-speech run: three spoken requests recognised; search and comparison preserved 28 September/light/119 minutes/before22:00; prepare_booking selected The Last Table, two tickets, S$24, 17:00–18:36 Screen1. Separate explicit API confirmation returned DEMO-C2159CB6. This is real provider speech testing with synthesised audio, not a physical microphone rehearsal.
+- First generated-speech harness attempt contained empty audio because macOS synthesis was sandboxed and timed out; recreated non-empty audio through authorised synthesis and the rerun passed. This was not an app speech-recognition failure.
+- Public browser guided preview passed search, comparison, two-ticket review and explicit button confirmation (DEMO-D409B101). Calendar content generation passed unit checks, but the in-app browser download observer timed out; successful file download is unverified.
+- Typed live messages were inconsistent: one direct-provider experiment completed all tools, but browser/client follow-ups sometimes answered as the visitor or omitted comparison. Removed typed-input controls from the public UI rather than claim this path works. Internal injection methods remain for application context/testing.
+- Existing real-device evidence remains the user's AirPods success on 16 September. Fresh noisy-room/barge-in and Safari/Firefox checks remain outstanding.
+
+Submission draft is saving on lablab; cover, PDF deck and narrated walkthrough are being prepared. A transient lablab draft error cleared after refresh. In-app browser click/screenshot coordinates became inconsistent on old tabs; fresh tabs restored correct interaction. Documentation and linked Obsidian project notes updated with the release scope and evidence boundaries. Commit/push and final submission outcome are recorded below when completed.
+
+### Release publication checkpoint
+
+The final public browser preview reached explicit confirmation DEMO-060F773A. The 390 px layout had no horizontal overflow or page errors. Saved the cover, 141-second narrated screenshot walkthrough, six-slide PDF and editable deck in ignored `artifacts/submission/`; checked every rendered slide and PDF page. Scanned all 39 publishable working files and 88 historical Git blobs for the actual private provider key: no matches; no private environment file was tracked.
+
+Version control decision: commit and push the verified release to the established public `Luo-Z-Y/gogocho-cinema` repository so judges can inspect and run the implementation. Generated media stays outside Git; public form uploads carry the submission assets. The final submission outcome follows separately.

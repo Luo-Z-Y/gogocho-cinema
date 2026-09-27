@@ -200,3 +200,80 @@ dialog h3 { font-size: 20px; margin-bottom: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* Submission demo: original illustrated posters, a clear conversation stage,
+   explicit comparison and a ticket keepsake. Existing native controls retain
+   their keyboard/focus contracts; no animation is required to use the page. */
+.eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 1.7px; text-transform: uppercase; color: var(--muted); }
+.opening { margin: 44px 0 42px; }
+.opening .eyebrow { margin-bottom: 14px; }
+.opening-note { margin-top: 16px; font-size: 14px; color: var(--muted); }
+h1 { font-size: clamp(54px, 6.8vw, 90px); }
+.cinema-layout { grid-template-columns: minmax(0, 1fr) 310px; gap: 40px; }
+.film-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 20px; }
+.poster { position: relative; height: auto; aspect-ratio: 2 / 3; padding: 0; border-radius: 3px; isolation: isolate; }
+.poster img { position: absolute; width: 100%; height: 100%; object-fit: cover; inset: 0; transition: transform .45s ease; }
+.film:hover .poster img { transform: scale(1.035); }
+.poster::after { content: ''; position: absolute; inset: 58% 0 0; background: linear-gradient(transparent, var(--film) 74%); z-index: 1; }
+.poster-index { position: absolute; top: 18px; left: 20px; font-size: 10px; letter-spacing: 2px; opacity: .7; }
+.poster-title { position: absolute; z-index: 2; bottom: 23px; left: 20px; right: 14px; font-size: clamp(27px, 2.4vw, 38px); line-height: .99; letter-spacing: -1.5px; }
+.film-info { padding: 13px 0 10px; gap: 6px; }
+.film-meta { font-size: 11px; }
+.film-meta span { white-space: nowrap; }
+.compare-toggle { border: 0; background: none; font-size: 10px; padding: 7px 0 7px 5px; color: var(--muted); white-space: nowrap; }
+.compare-toggle[aria-pressed=true], .compare-toggle:hover { color: var(--lime); }
+.screening { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 12px; }
+.screening span { margin: 0; }
+.screening .screening-start { font-size: 15px; color: inherit; }
+.film-details summary { padding: 12px 0 5px; font-size: 11px; }
+.box-office { padding: 25px; background: linear-gradient(150deg, #20292366, transparent 55%); }
+.box-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.box-caption { font-size: 12px; color: var(--muted); margin-top: 9px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.live .live-dot { background: var(--lime); box-shadow: 0 0 14px #e7f06b66; }
+.voice-art { border: 1px solid #e7f06b26; border-radius: 50%; width: 128px; height: 128px; margin: 30px auto 18px; background: radial-gradient(circle, #e7f06b0c, transparent 68%); }
+.activity { min-height: 20px; color: var(--muted); font-size: 12px; text-align: center; margin-bottom: 22px; }
+.entry-options { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px; }
+.entry-options button { min-height: 34px; }
+.journey { display: flex; list-style: none; padding: 0; margin: 22px 0 0; border-top: 1px solid var(--line); }
+.journey li { flex: 1; padding-top: 12px; color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.journey li.current { color: var(--lime); border-top: 1px solid var(--lime); margin-top: -1px; }
+.voice-status { margin-top: 16px; font-size: 11px; }
+.privacy { font-size: 10px; line-height: 1.6; }
+.preview { border: 1px solid #e7f06b44; border-radius: 3px; padding: 14px; margin-top: 18px; background: #e7f06b08; }
+.preview-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 10px; color: var(--lime); font-size: 10px; text-transform: uppercase; letter-spacing: .8px; }
+.preview-top button { border: 0; background: transparent; padding: 4px; font-size: 18px; }
+.preview p { font-size: 13px; margin-bottom: 13px; line-height: 1.55; }
+.preview small { display: block; font-size: 10px; color: var(--muted); margin-top: 10px; }
+.secondary { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 3px; background: transparent; padding: 12px 15px; color: var(--paper); min-height: 44px; font-size: 13px; }
+.secondary:hover { border-color: var(--lime); color: var(--lime); }
+.preview .secondary { width: 100%; font-size: 12px; }
+.empty > span { display: block; font-size: 44px; color: var(--lime); margin-bottom: 12px; }
+.empty .secondary { margin: 20px auto 0; }
+.compare-tray { position: fixed; z-index: 20; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; width: min(600px, 92vw); padding: 12px 16px 12px 22px; border: 1px solid var(--line); border-radius: 6px; background: #202923f5; box-shadow: 0 15px 60px #0006; }
+.compare-tray > span { flex: 1; font-size: 13px; }
+.compare-tray .primary { width: auto; min-height: 42px; font-size: 12px; }
+.compare-tray .close { width: 26px; }
+#comparison { width: min(800px, 94vw); padding: 30px; }
+.comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.comparison-art { width: 100%; height: 170px; object-fit: cover; object-position: 50% 40%; border-radius: 2px; margin-bottom: 20px; }
+.comparison-grid h3 { font-family: Georgia, serif; font-size: 28px; font-weight: 400; margin: 8px 0 14px; }
+.comparison-grid p { font-size: 13px; margin-bottom: 14px; }
+.comparison-grid .eyebrow { font-size: 10px; }
+.comparison-grid .muted { font-size: 11px; }
+.comparison-grid .secondary { width: 100%; font-size: 12px; }
+.comparison-grid .secondary span { font-size: 11px; }
+#comparison .dialog-top .eyebrow { margin-bottom: 8px; }
+#booking { width: min(510px, 92vw); }
+#booking.confirmed { border-color: #e7f06b88; }
+.confirmed #booking-details { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 22px 0; }
+.confirmed #booking-heading { color: var(--lime); }
+.ticket-actions { margin-top: 22px; }
+.ticket-actions .secondary { width: 100%; }
+#booking-message { font-family: monospace; font-size: 12px; letter-spacing: .8px; }
+footer { display: flex; gap: 20px; justify-content: space-between; padding-bottom: 32px; font-size: 10px; }
+footer > span:first-child { font-size: 13px; color: var(--paper); }
+@media (max-width: 1200px) { .film-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cinema-layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; } .poster-title { font-size: 36px; } .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filter-button { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .opening { margin: 32px 0; } h1 { font-size: 60px; } .opening-note { font-size: 12px; } .cinema-layout { display: flex; gap: 32px; } .box-office { display: block; padding: 22px; } .voice-art { width: 90px; height: 90px; margin: 14px auto 10px; } .activity { margin-bottom: 16px; } .box-heading h2 { font-size: 28px; } .journey { margin-top: 12px; } .poster-title { font-size: 32px; } .film-info { display: block; } .compare-toggle { padding: 7px 0; } .comparison-grid { gap: 16px; } .comparison-grid h3 { font-size: 24px; } .comparison-grid .secondary { flex-direction: column; align-items: start; } footer { flex-wrap: wrap; gap: 12px; } }
+@media (max-width: 480px) { h1 { font-size: 52px; } .film-grid { grid-template-columns: 1fr 1fr; gap: 28px 14px; } .poster-title { font-size: 25px; left: 13px; bottom: 17px; letter-spacing: -1px; } .poster-index { left: 13px; top: 13px; font-size: 8px; } .screening { flex-wrap: wrap; padding: 10px; gap: 5px; } .screening span:nth-child(2) { order: 3; width: 100%; font-size: 9px; } .compare-tray { gap: 9px; padding: 10px 12px; } .compare-tray > span { font-size: 11px; } .compare-tray .primary { padding: 10px; } #comparison { padding: 22px; } .comparison-grid { grid-template-columns: 1fr; gap: 25px; } .comparison-art { height: 140px; } .comparison-grid .secondary { flex-direction: row; align-items: center; } }
+@media (prefers-reduced-motion: reduce) { .poster img { transition: none; } .film:hover .poster img { transform: none; } }

@@ -21,13 +21,14 @@ function fixture() {
 }
 
 // Hold-mode results resume the provider reply themselves. A stray reply.create
-// would duplicate it. Also reject names outside the two-tool browser allowlist.
+// would duplicate it. Also reject names outside the three-tool browser allowlist.
 test('a hold tool returns a validated result without starting a second reply', async () => {
   const { voice, sent } = fixture();
   await voice.tool({ name: 'search_screenings', arguments: {}, call_id: 'a' }, voice.generation);
   assert.deepEqual(sent.map(m => m.type), ['tool.result']);
   assert.equal(sent[0].call_id, 'a');
   assert.equal(sent[0].is_error, false);
+  voice.replyActive = false;
   await voice.tool({ name: 'confirm_booking', call_id: 'b' }, voice.generation);
   assert.equal(sent[1].is_error, true);
 });
@@ -94,4 +95,34 @@ test('missing audio frames and a muted device are distinguished from silence', (
   assert.match(voice.inputWarning(Date.now()), /muted/);
   assert.deepEqual(voice.constraints('chosen-input').deviceId, { exact: 'chosen-input' });
   assert.equal(voice.constraints('').deviceId, undefined);
+});
+
+// Real provider testing exposed lost typed context with a bare reply.create.
+// The one-shot request must carry the exact text and retain its user role.
+test('typed replies carry explicit context without promoting visitor instructions', () => {
+  const { voice, sent } = fixture();
+  voice.text('Tomorrow, light, under two hours, before 22:00.');
+  assert.equal(sent[0].content, 'Tomorrow, light, under two hours, before 22:00.');
+  assert.match(sent[1].instructions, /Speak only as the box-office host, never as the visitor/);
+  assert.match(sent[1].instructions, /Tomorrow, light, under two hours, before 22:00/);
+});
+
+// Fast HTTP must not race a still-active tool reply. Test both orderings and
+// ensure a visitor message remains queued until the continuation has finished.
+test('hold results wait for reply.done and delayed HTTP completion', async () => {
+  for (const delayed of [false, true]) {
+    const { voice, sent } = fixture();
+    let finish;
+    voice.runTool = delayed ? () => new Promise(resolve => { finish = resolve; }) : async () => ({});
+    voice.replyActive = true;
+    const pending = voice.tool({ name: 'compare_films', arguments: {}, call_id: 'compare' }, voice.generation);
+    if (!delayed) await pending;
+    assert.equal(sent.length, 0);
+    voice.text('Two tickets please');
+    voice.event({ type: 'reply.done', status: 'completed' }, voice.generation);
+    if (delayed) { assert.equal(sent.length, 0); finish({}); await pending; }
+    assert.deepEqual(sent.map(m => m.type), ['tool.result']);
+    voice.event({ type: 'reply.done', status: 'completed' }, voice.generation);
+    assert.deepEqual(sent.map(m => m.type), ['tool.result', 'conversation.message', 'reply.create']);
+  }
 });

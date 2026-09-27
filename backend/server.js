@@ -1,18 +1,20 @@
 /**
- * HTTP boundary for the local fictional cinema.
+ * HTTP boundary for the fictional cinema, locally and on Vercel.
  *
  * This module serves the browser, owns cookie-scoped review state and exchanges
  * the private provider key for temporary voice tokens. Cinema calculations live
  * in cinema/service.js; conversational instructions live in voice/agent.js.
- * The origin, memory and rate-limit guards below are for a local prototype, not
- * a substitute for authentication or durable abuse controls on a public server.
+ * Public deployment uses signed demo state and an additional Vercel WAF rule.
+ * Neither is an account system or a real ticket inventory. Per-process limits
+ * below are only a backstop; the edge rule survives function restarts.
  */
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { programme, searchScreenings, prepareBooking, confirmBooking } from './cinema/service.js';
+import { films, programme, searchScreenings, prepareBooking, confirmBooking, compareFilms } from './cinema/service.js';
 import { agentConfig } from './voice/agent.js';
+import { encodeSession, decodeSession, newSession } from './session.js';
 
 // Map browser URLs to known files rather than treating the repository as a
 // static directory. New frontend assets need an explicit entry here; backend
@@ -25,16 +27,23 @@ const files = {
   '/voice/pcm-worklet.js': ['voice/pcm-worklet.js', 'text/javascript'],
   '/assets/favicon.svg': ['assets/favicon.svg', 'image/svg+xml']
 };
+// Only checked catalogue IDs become static poster routes; arbitrary asset paths
+// never gain access to the backend or the local environment file.
+for (const film of films) files[`/assets/posters/${film.id}.svg`] = [`assets/posters/${film.id}.svg`, 'image/svg+xml'];
+files['/booking.js'] = ['booking.js', 'text/javascript'];
 
 /**
  * Build, but do not listen on, a server. Tests inject a clock, an empty/dummy
  * key and a simulated provider fetch so no real service or credential is needed.
  * Callers choose the listening port; the command-line entry point is below.
  */
-export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fetchProvider = fetch, now = () => new Date() } = {}) {
-  // Each opaque cookie identifies a two-hour browser session and its latest
-  // review. Tabs sharing the cookie share this state; a restart discards it.
+export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fetchProvider = fetch, now = () => new Date(), publicOrigin = process.env.PUBLIC_ORIGIN || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''), signingKey = process.env.DEMO_SIGNING_KEY || '' } = {}) {
+  // Local opaque cookies identify in-memory sessions. Deployed cookies carry
+  // signed two-hour demo state; tabs sharing a cookie share the latest review.
   const sessions = new Map();
+  if (publicOrigin && (!publicOrigin.startsWith('https://') || signingKey.length < 32)) throw new Error('Public hosting requires HTTPS and a private signing key.');
+  const deployedHosts = [publicOrigin, process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''].filter(Boolean).map(value => new URL(value).host);
+  const sessionSeconds = publicOrigin ? 180 : 600;
   // This counter measures start attempts, including failed provider exchanges,
   // across the whole process. It is deliberately not a per-customer quota.
   let tokenWindow = 0, tokensIssued = 0;
@@ -53,8 +62,10 @@ export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fe
     try {
       // Check the host before using it as the base URL. Static assets are read
       // relative to this module, so their paths do not depend on the shell cwd.
-      if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || '')) return json(403, { error: 'Local access only.' });
-      const url = new URL(req.url, `http://${req.headers.host}`);
+      const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || '');
+      if (!local && !deployedHosts.includes(req.headers.host)) return json(403, { error: 'Unrecognised cinema address.' });
+      const origin = `${local ? 'http' : 'https'}://${req.headers.host}`;
+      const url = new URL(req.url, origin);
       if (req.method === 'GET' && files[url.pathname]) {
         const [file, type] = files[url.pathname];
         const content = await readFile(new URL(`../frontend/${file}`, import.meta.url));
@@ -65,25 +76,25 @@ export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fe
       // session handling. Fetching a stylesheet should not create a review cookie.
       if (!url.pathname.startsWith('/api/')) return json(404, { error: 'Not found.' });
       if (!['GET', 'POST'].includes(req.method)) return json(405, { error: 'Method not allowed.' });
-      // Mutation/token requests must originate from this exact local origin,
+      // Mutation/token requests must originate from this exact page origin,
       // including its port. This complements SameSite cookies; it is not login.
-      if (req.method === 'POST' && req.headers.origin !== `http://${req.headers.host}`) return json(403, { error: 'Use the cinema page to perform this action.' });
+      if (req.method === 'POST' && req.headers.origin !== origin) return json(403, { error: 'Use the cinema page to perform this action.' });
       // Use one clock reading throughout a request so schedule, expiry and
       // quota checks agree even if real time crosses a boundary mid-request.
       const time = now();
+      // Locally use in-memory state; a configured deployment signs state so a
+      // review survives cold starts. Neither mode turns a visitor into a user account.
       for (const [id, s] of sessions) if (s.expires < time.getTime()) sessions.delete(id);
-      // Reuse a cookie only when its ID still exists in our map. Missing/unknown
-      // IDs get a fresh session rather than a default visitor's review. The cookie
-      // is bearer session state, not authenticated proof of a visitor's identity.
-      let sid = (req.headers.cookie || '').match(/(?:^|;\s*)gogocho=([a-f0-9-]+)/)?.[1];
-      if (!sessions.has(sid)) {
-        if (sessions.size >= 1000) return json(429, { error: 'Too many local sessions.' });
-        sid = randomUUID(); sessions.set(sid, { expires: time.getTime() + 2 * 3600000, quote: null });
-        res.setHeader('Set-Cookie', `gogocho=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200`);
+      const rawCookie = (req.headers.cookie || '').match(/(?:^|;\s*)gogocho=([^;]+)/)?.[1];
+      let state = signingKey ? decodeSession(rawCookie, signingKey, time) : sessions.get(rawCookie);
+      const fresh = !state;
+      if (!state) {
+        if (!signingKey && sessions.size >= 1000) return json(429, { error: 'The demo is busy. Try again shortly.' });
+        state = newSession(time);
+        if (!signingKey) sessions.set(state.id, state);
       }
-      // HttpOnly hides the cookie from page JavaScript; same-origin fetch sends
-      // it automatically. Return only a configuration flag, never the API key.
-      const state = sessions.get(sid);
+      const saveSession = () => res.setHeader('Set-Cookie', `gogocho=${signingKey ? encodeSession(state, signingKey) : state.id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200${local ? '' : '; Secure'}`);
+      if (fresh) saveSession();
       if (req.method === 'GET' && url.pathname === '/api/programme') return json(200, { ...programme(time), voiceConfigured: Boolean(apiKey) });
       if (req.method !== 'POST') return json(404, { error: 'Not found.' });
       // Count incoming bytes before parsing to bound body allocation. Reject
@@ -98,8 +109,9 @@ export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fe
       // execution. A new review replaces the old one only after validation;
       // there is intentionally no confirm_booking tool for the agent to call.
       if (url.pathname === '/api/tool') {
+        if (input.name === 'compare_films') return json(200, compareFilms(input.arguments, time));
         if (input.name === 'search_screenings') return json(200, searchScreenings(input.arguments, time));
-        if (input.name === 'prepare_booking') { state.quote = prepareBooking(input.arguments, time); return json(200, state.quote); }
+        if (input.name === 'prepare_booking') { state.quote = prepareBooking(input.arguments, time); saveSession(); return json(200, state.quote); }
         return json(400, { error: 'Unknown cinema tool.' });
       }
       // The page calls this separate route after the visitor's confirmation
@@ -114,20 +126,23 @@ export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fe
       if (url.pathname === '/api/voice-session') {
         if (!apiKey) return json(503, { error: 'Voice is not configured yet. You can still explore the programme and try a demo booking.' });
         if (time.getTime() - tokenWindow > 3600000) { tokenWindow = time.getTime(); tokensIssued = 0; }
-        if (tokensIssued >= 5) return json(429, { error: 'Five voice starts per hour are allowed in this local prototype. Try again later.' });
+        if (tokensIssued >= 5) return json(429, { error: 'The live demo has reached its session limit. Please try the guided preview or come back later.' });
+        if (time.getTime() - state.voiceWindow >= 3600000) { state.voiceWindow = time.getTime(); state.voiceStarts = 0; }
+        if (publicOrigin && state.voiceStarts >= 3) return json(429, { error: 'Three conversations per hour. You can still browse or try the preview.' });
+        state.voiceStarts++; saveSession();
         tokensIssued++;
         try {
           // The permanent key is used only on this server-to-provider request.
           // An unused token expires in 60 seconds; a started session is capped
-          // at 600 seconds. The 12-second HTTP timeout is a separate safeguard.
-          const r = await fetchProvider('https://agents.assemblyai.com/v1/token?expires_in_seconds=60&max_session_duration_seconds=600', { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(12000) });
+          // at three minutes publicly or ten minutes locally. The 12-second HTTP timeout is a separate safeguard.
+          const r = await fetchProvider(`https://agents.assemblyai.com/v1/token?expires_in_seconds=60&max_session_duration_seconds=${sessionSeconds}`, { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(12000) });
           // Do not relay raw provider errors, which may contain account details.
           // Only a valid temporary token and non-secret agent configuration are
           // returned to the browser; neither requires exposing the server key.
           if (!r.ok) return json(502, { error: 'AssemblyAI could not start a session. Check your API key, credits and Voice Agent API access.' });
           const data = await r.json();
           if (typeof data.token !== 'string' || !data.token) throw new Error('Missing token');
-          return json(200, { token: data.token, config: agentConfig(time) });
+          return json(200, { token: data.token, config: agentConfig(time), sessionSeconds });
         } catch { return json(502, { error: 'The voice service is unavailable. Please try again.' }); }
       }
       return json(404, { error: 'Not found.' });
@@ -137,7 +152,7 @@ export function createServer({ apiKey = process.env.ASSEMBLYAI_API_KEY || '', fe
 
 // Importing createServer in tests must not claim a port or load .env itself.
 // npm start/dev loads the root .env through Node's command-line flag and reaches
-// this branch. Bind only to loopback until public-access safeguards are added.
+// this branch. The local entry stays on loopback; root server.js is the hosting adapter.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 3000);
   const server = createServer();

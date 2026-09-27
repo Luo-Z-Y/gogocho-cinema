@@ -97,6 +97,20 @@ export function prepareBooking(args, now = new Date()) {
   if (!screening) throw new Error('Choose a future screening from the current programme.');
   return { id: randomUUID(), fictional: true, status: 'awaiting_confirmation', screening, film: films.find(f => f.id === screening.filmId), quantity: args.quantity, totalCents: screening.priceCents * args.quantity, expiresAt: new Date(now.getTime() + 10 * 60000).toISOString() };
 }
+
+/** Compare exactly two original films without inventing availability or relaxing
+ * the current search constraints. A film can be discussed even when its screening
+ * does not match: its screening is then null and the UI offers no booking button.
+ * Reuse searchScreenings so date, runtime and strict finish boundaries agree. */
+export function compareFilms(args, now = new Date()) {
+  if (!args || !Array.isArray(args.filmIds) || args.filmIds.length !== 2 || new Set(args.filmIds).size !== 2
+    || args.filmIds.some(id => !films.some(f => f.id === id))) throw new Error('Choose two different films from this programme.');
+  const { filmIds, ...constraints } = args;
+  const result = searchScreenings(constraints, now);
+  return { fictional: true, date: result.date, films: filmIds.map(id => ({
+    ...films.find(f => f.id === id), screening: result.results.find(s => s.filmId === id) || null
+  })) };
+}
 /**
  * Validate the current server-held review and return a fictional confirmation.
  * Both its TTL and the screening start are checked, including exact boundaries.

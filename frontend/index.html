@@ -20,7 +20,7 @@
   <a class="skip" href="#programme">Skip to programme</a>
   <header class="masthead"><a class="brand" href="/" aria-label="Gogocho Cinema home">gogocho<span>CINEMA</span></a><span class="demo-label">Fictional cinema</span></header>
   <main>
-    <div class="opening"><h1>Find your <em>film.</em></h1></div>
+    <div class="opening"><p class="eyebrow">An independent cinema, imagined.</p><h1>Find your <em>film.</em></h1><p class="opening-note">A little conversation. A great evening.</p></div>
     <div class="cinema-layout">
       <section id="programme" aria-labelledby="programme-heading">
         <div class="section-heading"><h2 id="programme-heading">Programme</h2><span class="muted">Singapore time</span></div>
@@ -47,30 +47,33 @@
       <!-- The voice panel is complementary to the programme, not a requirement
            for filtering or demo booking. Controls wait for application setup. -->
       <aside class="box-office" aria-labelledby="box-heading">
-        <h2 id="box-heading">Box office</h2>
+        <div class="box-heading"><h2 id="box-heading">Box office</h2><span class="live-dot" aria-hidden="true"></span></div><p class="box-caption">Your taste. Your time. Your film.</p>
         <!-- These bars are driven by measured RMS input through a CSS variable.
              They are decorative for accessibility; text status conveys warnings. -->
         <div class="voice-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-        <button type="button" id="voice-start" class="primary" disabled>Start talking <span aria-hidden="true">↗</span></button>
+        <p id="voice-activity" class="activity" role="status">Let’s find your evening.</p><button type="button" id="voice-start" class="primary" disabled>Start talking <span aria-hidden="true">↗</span></button><div class="entry-options"><button type="button" id="preview-start" class="text-button" disabled>Try a preview ↗</button></div><ol id="journey" class="journey" aria-label="Cinema journey"><li data-stage="find">Find</li><li data-stage="compare">Compare</li><li data-stage="book">Book</li></ol><section id="preview" class="preview" aria-label="Guided preview" hidden><div class="preview-top"><span id="preview-step">Guided preview</span><button id="preview-close" type="button" aria-label="End guided preview">×</button></div><p id="preview-copy"></p><button id="preview-next" type="button" class="secondary">Find films</button><small>Scripted walkthrough · no microphone</small></section>
         <p id="voice-status" class="voice-status" role="status">Checking availability…</p>
-        <p class="privacy">Voice audio is sent to AssemblyAI.</p>
+        <p class="privacy">Powered by AssemblyAI · Audio is sent while connected.</p>
         <!-- Native disclosure keeps diagnostics compact. Test mic is local-only;
              starting a conversation instead shares microphone audio with AssemblyAI. -->
         <details class="mic-controls" id="mic-controls"><summary>Microphone</summary><label for="mic-input" class="sr-only">Microphone input</label><select id="mic-input" disabled><option value="">System default</option></select><button type="button" id="mic-test" class="text-button" disabled>Test mic</button><p id="mic-status" role="status"></p></details>
         <!-- Transcript text is inserted with textContent, not interpreted as HTML.
-             Typed input joins the active voice session rather than a second agent. -->
+             Live recognition and spoken replies remain visible without editing. -->
         <div id="transcript" class="transcript" role="log" aria-label="Voice conversation" aria-live="polite"></div>
-        <form id="chat" class="chat" hidden><label for="message" class="sr-only">Send a message during your voice session</label><input id="message" placeholder="Or type a message…" maxlength="500" autocomplete="off"><button aria-label="Send message">↗</button></form>
       </aside>
     </div>
   </main>
-  <footer>Demo bookings only · No payment</footer>
+  <footer><span>gogocho cinema</span><span>All films are fictional · Demo bookings only</span><span>Made for the AssemblyAI hackathon</span></footer>
+  <!-- Comparison stays explicit: at most two selected films, facts and future
+       screening choices come from the server. Native dialogue handles focus. -->
+  <div id="compare-tray" class="compare-tray" hidden><span id="compare-selection"></span><button id="compare-open" type="button" class="primary" disabled>Compare films</button><button id="compare-clear" type="button" class="close" aria-label="Clear film comparison">×</button></div>
+  <dialog id="comparison" aria-labelledby="comparison-heading"><div class="dialog-top"><div><p class="eyebrow">Two different evenings</p><h2 id="comparison-heading">Which feels like you?</h2></div><button id="close-comparison" type="button" class="close" aria-label="Close comparison">×</button></div><div id="comparison-films" class="comparison-grid"></div></dialog>
   <!-- showModal() supplies the native modal/focus and Escape behaviour. Voice
        may open this review, but only the submit action calls /api/confirm. Keep
        the no-payment/no-reservation notice visible beside the confirmation. -->
   <dialog id="booking" aria-labelledby="booking-heading">
     <div class="dialog-top"><h2 id="booking-heading">Review booking</h2><button type="button" id="close-booking" class="close" aria-label="Close booking">×</button></div>
-    <div id="booking-details"></div>
+    <div id="booking-details"></div><div id="ticket-actions" class="ticket-actions" hidden><button type="button" id="save-ticket" class="secondary">Save demo to calendar ↗</button></div>
     <!-- This range mirrors the server's quantity validation, not a replacement
          for it. Changing quantity requests a fresh review and total from the API. -->
     <form id="booking-form"><label for="quantity">Tickets</label><select id="quantity"><option value="1">1 ticket</option><option value="2" selected>2 tickets</option><option value="3">3 tickets</option><option value="4">4 tickets</option><option value="5">5 tickets</option><option value="6">6 tickets</option></select><button id="confirm" class="primary" type="submit">Confirm demo booking</button></form>

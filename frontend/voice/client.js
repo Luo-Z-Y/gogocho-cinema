@@ -12,8 +12,8 @@ export class VoiceBoxOffice {
    * report changes to the UI; optional diagnostics callbacks also let unit tests
    * exercise protocol behaviour without a DOM or physical microphone.
    */
-  constructor({ post, runTool, transcript, state, input = () => {}, devices = () => {} }) {
-    Object.assign(this, { post, runTool, transcript, state, input, devices });
+  constructor({ post, runTool, transcript, state, input = () => {}, devices = () => {}, activity = () => {} }) {
+    Object.assign(this, { post, runTool, transcript, state, input, devices, activity });
     this.active = false;
     // A generation identifies a capture/conversation attempt. Incrementing it
     // invalidates old setup completions and late tool delivery to a closed session.
@@ -22,6 +22,7 @@ export class VoiceBoxOffice {
     this.sources = new Set();
     // Typed input/application context wait until the active reply has finished.
     this.pendingMessages = [];
+    this.pendingTools = [];
     // Accumulate agent transcript fragments by item ID until the final snapshot.
     this.agentText = new Map();
   }
@@ -32,11 +33,13 @@ export class VoiceBoxOffice {
    * creation. Check the generation after awaits: permission prompts and network
    * requests may finish after the user has already ended this attempt.
    */
-  async start(deviceId = '', testOnly = false) {
+  async start(deviceId = '', testOnly = false, textOnly = false) {
     // Block duplicate clicks while permission, device setup or a test is pending.
     if (this.active || this.starting || this.testing) return;
     this.starting = true;
     this.testing = testOnly;
+    this.textOnly = textOnly;
+    this.activity(testOnly ? 'Testing microphone…' : 'Connecting…');
     this.lastFrameAt = this.lastSoundAt = 0;
     this.peakLevel = 0;
     this.lastMeterAt = 0;
@@ -47,14 +50,16 @@ export class VoiceBoxOffice {
     const current = () => generation === this.generation;
     this.connectTimer = setTimeout(() => this.stop('Connection timed out. Please try again.'), 30000);
     try {
-      if (!navigator.mediaDevices?.getUserMedia || !globalThis.AudioContext) throw new Error('Use a current browser on localhost to enable your microphone.');
+      if ((!textOnly && !navigator.mediaDevices?.getUserMedia) || !globalThis.AudioContext) throw new Error('Use a current browser over HTTPS or localhost.');
       // Create/resume contexts within the click gesture for browser autoplay
       // rules. Capture runs at its actual device/context rate; the worklet will
       // resample it to 24 kHz. Playback uses a separate scheduling clock/graph.
-      this.capture = new AudioContext();
+      this.capture = textOnly ? null : new AudioContext();
       this.playback = new AudioContext();
-      await Promise.all([this.capture.resume(), this.playback.resume()]);
+      await Promise.all([this.capture?.resume(), this.playback.resume()]);
       if (!current()) return;
+      // Text mode uses the same provider and tools, without asking for a mic.
+      if (!textOnly) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: this.constraints(deviceId) });
       if (!current()) { stream.getTracks().forEach(track => track.stop()); return; }
       this.stream = stream;
@@ -102,11 +107,13 @@ export class VoiceBoxOffice {
         }, 6000);
         return;
       }
+      }
       // The server exchanges its private key for this short-lived token. Do not
       // log the socket URL: it contains the temporary credential in its query.
       // Send the non-secret session configuration only once the socket is open.
-      const { token, config } = await this.post('/api/voice-session', {});
+      const { token, config, sessionSeconds = 600 } = await this.post('/api/voice-session', {});
       if (!current()) return;
+      this.sessionSeconds = sessionSeconds;
       const url = new URL('wss://agents.assemblyai.com/v1/ws');
       url.searchParams.set('token', token);
       const ws = this.ws = new WebSocket(url);
@@ -220,6 +227,8 @@ export class VoiceBoxOffice {
    * sample. Empty string means no warning, not proof of intelligible speech.
    */
   inputWarning(now) {
+    // Listening to the agent is expected silence, not a broken microphone.
+    if (this.replyActive || this.sources.size) return '';
     if (this.track?.muted) return 'Microphone muted. Check your input.';
     if (now - (this.lastFrameAt || this.captureStartedAt) > 4000) return 'Microphone paused. Restart or choose another input.';
     if (now - (this.lastSoundAt || this.captureStartedAt) > 8000) return 'No sound detected. Check your input.';
@@ -246,17 +255,22 @@ export class VoiceBoxOffice {
       clearTimeout(this.connectTimer);
       this.starting = false;
       this.active = true;
-      this.state(true, 'Connected. Speak when ready.');
-      this.sessionTimer = setTimeout(() => this.stop('Your ten-minute demo session has ended.'), 600000);
+      this.state(true, this.textOnly ? 'Connected · microphone off' : 'Connected · you can interrupt');
+      this.activity(this.textOnly ? 'Type what you are in the mood for.' : 'Listening');
+      this.sessionTimer = setTimeout(() => this.stop('This demo conversation has ended. Thanks for visiting.'), (this.sessionSeconds || 600) * 1000);
     } else if (message.type === 'reply.started') {
       this.replyActive = true;
+      this.activity('Thinking');
     } else if (message.type === 'reply.audio' && this.active) {
+      this.activity('Speaking');
       this.play(message.data);
     } else if (message.type === 'reply.done') {
       // Provider interruption does not automatically cancel AudioBufferSources
       // already scheduled in our browser; clear those before sending queued text.
       this.replyActive = false;
-      if (message.status === 'interrupted') this.clearPlayback();
+      if (message.status === 'interrupted') { this.clearPlayback(); this.pendingTools = []; }
+      if (!this.sources.size) this.activity(this.textOnly ? 'Ready for your message.' : 'Listening');
+      this.flushToolResults();
       this.flushMessages();
     } else if (message.type === 'transcript.user' || message.type === 'transcript.user.delta') {
       this.transcript('user', message.text, `user-${message.item_id}`);
@@ -272,8 +286,10 @@ export class VoiceBoxOffice {
       this.agentText.delete(id);
       this.transcript('agent', message.text, id);
     } else if (message.type === 'tool.call') {
-      // Both configured tools use hold mode; results resume the reply themselves.
+      // All configured tools use hold mode; wait for reply.done before delivery.
       // tool() awaits HTTP internally without blocking other socket events.
+      this.activity(message.name === 'prepare_booking' ? 'Preparing your review' : message.name === 'compare_films' ? 'Comparing films' : 'Finding screenings');
+      this.replyActive = true;
       this.tool(message, generation);
     } else if (message.type === 'session.error' || message.type === 'error') {
       this.stop('AssemblyAI could not continue the conversation. Check API access and credits, then reconnect.');
@@ -290,12 +306,28 @@ export class VoiceBoxOffice {
    * this guard does not roll back an HTTP operation that has already executed.
    */
   async tool(message, generation) {
+    const pending = { ready: false, call_id: message.call_id };
+    this.pendingTools.push(pending);
     let result, is_error = false;
     try {
-      if (!['search_screenings', 'prepare_booking'].includes(message.name)) throw new Error('Unknown cinema tool.');
+      if (!['search_screenings', 'compare_films', 'prepare_booking'].includes(message.name)) throw new Error('Unknown cinema tool.');
       result = await this.runTool(message.name, message.arguments);
     } catch (error) { result = { error: error.message }; is_error = true; }
-    if (this.active && generation === this.generation) this.send({ type: 'tool.result', call_id: message.call_id, result: JSON.stringify(result), is_error });
+    if (!this.active || generation !== this.generation || !this.pendingTools.includes(pending)) return;
+    Object.assign(pending, { ready: true, result: JSON.stringify(result), is_error });
+    this.flushToolResults();
+  }
+
+  /**
+   * A hold-mode tool result is legal only after the tool reply has ended. HTTP
+   * may finish before or after reply.done, so both paths try this guarded drain.
+   * Wait for the whole batch and reserve the reply before sending: queued typed
+   * input must not start a competing reply while these results resume the agent.
+   */
+  flushToolResults() {
+    if (!this.active || this.replyActive || !this.pendingTools.length || this.pendingTools.some(tool => !tool.ready)) return;
+    this.replyActive = true;
+    for (const { call_id, result, is_error } of this.pendingTools.splice(0)) this.send({ type: 'tool.result', call_id, result, is_error });
   }
 
   /**
@@ -316,7 +348,7 @@ export class VoiceBoxOffice {
     source.buffer = buffer;
     source.connect(this.playback.destination);
     this.sources.add(source);
-    source.onended = () => { source.disconnect(); this.sources.delete(source); };
+    source.onended = () => { source.disconnect(); this.sources.delete(source); if (this.active && !this.sources.size && !this.replyActive) this.activity(this.textOnly ? 'Ready for your message.' : 'Listening'); };
     // Append chunks to the end of queued speech instead of overlapping them.
     // A short lead-in avoids scheduling in the past after a network gap; it is
     // not a guarantee about the conversation's total end-to-end latency.
@@ -349,10 +381,14 @@ export class VoiceBoxOffice {
    * those resume the existing reply automatically and must not call reply.create.
    */
   flushMessages() {
-    if (!this.active || this.replyActive || !this.pendingMessages.length) return;
-    for (const message of this.pendingMessages.splice(0)) this.send({ type: 'conversation.message', ...message });
+    if (!this.active || this.replyActive || this.pendingTools.length || !this.pendingMessages.length) return;
+    const messages = this.pendingMessages.splice(0);
+    for (const message of messages) this.send({ type: 'conversation.message', ...message });
     this.replyActive = true;
-    this.send({ type: 'reply.create' });
+    // Explicit one-shot context avoids relying on the provider committing an
+    // injected history item before an immediately following reply.create. Keep visitor
+    // text quoted and separate from trusted application updates. The ordinary cinema rules still apply.
+    this.send({ type: 'reply.create', instructions: `Respond to this latest visitor message, preserving all earlier visitor preferences: ${JSON.stringify(messages.filter(message => message.role === 'user').map(message => message.content).join('\n'))}. Follow the cinema system rules and use the appropriate tools. Speak only as the box-office host, never as the visitor. Application updates: ${JSON.stringify(messages.filter(message => message.role === 'system').map(message => message.content))}` });
   }
 
   /** Stop both playing and scheduled speech; reset the append-only audio clock. */
@@ -391,7 +427,9 @@ export class VoiceBoxOffice {
     this.input(0, message.startsWith('No sound') ? message : '', message.startsWith('No sound'));
     this.replyActive = false;
     this.pendingMessages = [];
+    this.pendingTools = [];
     this.agentText.clear();
+    this.activity('Let’s find your evening.');
     this.state(false, message);
   }
 }

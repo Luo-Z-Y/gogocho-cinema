@@ -13,3 +13,7 @@ node_modules/
 coverage/
 artifacts/
 *.log
+
+# Local hosting linkage and downloaded deployment environment.
+.vercel/
+.vercel
